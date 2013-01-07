@@ -102,7 +102,7 @@ end
 
 function action_add()
 
-	local UUID, values, tmpl, type_tmpl, service_type, app_types, service_string, service_file
+	local UUID, values, tmpl, type_tmpl, service_type, app_types, service_string, service_file, signing_tmpl, signing_msg, signature, fingerprint
 	local uci = luci.model.uci.cursor()
 
 	UUID = uci_encode(luci.http.formvalue("IP") .. luci.http.formvalue("port"))
@@ -126,7 +126,6 @@ function action_add()
 			  ['icon'] =  luci.http.formvalue("icon"),
 			  ['nick'] =  luci.http.formvalue("appNick"),
 			  ['description'] =  luci.http.formvalue("desc"),
-			  ['fingerprint'] = luci.http.formvalue("fingerprint"),
 			  ['ttl'] = luci.http.formvalue("ttl"),
 			  ['transport'] = luci.http.formvalue("transport"),
 			  ['uuid'] = UUID,
@@ -144,6 +143,18 @@ function action_add()
 		if (tonumber(luci.http.formvalue("ttl")) > 0) then
 			
 			type_tmpl = '<txt-record>type=${app_type}</txt-record>'
+			signing_tmpl = [[
+<type>_${type}._${proto}</type>
+<domain-name>mesh.local</domain-name>
+<port>${port}</port>
+<txt-record>application=${name}</txt-record>
+<txt-record>nick=${nick}</txt-record>
+<txt-record>ttl=${ttl}</txt-record>
+<txt-record>ipaddr=${ipaddr}</txt-record>
+${app_types}
+<txt-record>icon=${icon}</txt-record>
+<txt-record>description=${desc}</txt-record>
+]]
 			tmpl = [[
 <?xml version="1.0" standalone='no'?><!--*-nxml-*-->
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
@@ -153,23 +164,13 @@ function action_add()
 <!-- Reference: http://wiki.xbmc.org/index.php?title=Avahi_Zeroconf -->
 
 <service-group>
-  <name replace-wildcards="yes">${UUID} on %h</name>
+<name replace-wildcards="yes">${UUID} on %h</name>
 
-  <service>
-    <type>_${type}._${proto}</type> <!-- _svc-type._sub-type._tcp|udp -->
-    <domain-name>mesh.local</domain-name>
-    <port>${port}</port> <!--optional-->
-    <txt-record>application=${name}</txt-record>
-    <txt-record>nick=${nick}</txt-record>
-    <txt-record>ttl=${ttl}</txt-record> <!--optional-->
-    <txt-record>ipaddr=${ipaddr}</txt-record> <!--IP address or URL of service host -->
-    ${app_types}
-    <txt-record>fingerprint=${fingerprint}</txt-record>
-    <txt-record>signature=${signature}</txt-record>
-    <txt-record>icon=${icon}</txt-record>
-    <txt-record>description=${desc}</txt-record>
-
-  </service>
+<service>
+]] .. signing_tmpl .. [[
+<txt-record>signature=${signature}</txt-record>
+<txt-record>fingerprint=${fingerprint}</txt-record>
+</service>
 </service-group>
 ]]
 
@@ -180,6 +181,9 @@ function action_add()
 			if (values.port ~= '') then
 				local command = "grep " .. values.port .. "/" .. values.transport .. " /etc/services |awk '{ printf(\"%s\", $1) }'"
 				service_type = luci.sys.exec(command)
+				if (service_type == '') then
+					service_type = 'commotion'
+				end
 			else
 				service_type = 'commotion'
 			end
@@ -194,21 +198,40 @@ function action_add()
 				app_types = printf(type_tmpl, {app_type = luci.http.formvalue("types")})
 			end
 
-			service_string = printf(tmpl,{
-				UUID =	UUID,
-				name =	values.name,
-				type = service_type,
-				ipaddr = values.ipaddr,
-	       	         	port = 	values.port,
-	                	icon = 	values.icon,
-		                nick =  values.nick,
-		                desc =  values.description,
-		                fingerprint =	values.fingerprint,
-		                signature = 	values.signature,
-		                ttl = values.ttl,
-		                proto = values.transport or 'tcp',
-				app_types = app_types
-			})
+			local fields = {
+			        UUID =  UUID,                                                                                                                           
+                                name =  values.name,                                                                                                                    
+                                type = service_type,                                                                                                                    
+                                ipaddr = values.ipaddr,                                                                                                                 
+                                port =  values.port,                                                                                                                    
+                                icon =  values.icon,                                                                                                                    
+                                nick =  values.nick,                                                                                                                    
+                                desc =  values.description,                                                                                                             
+                                -- fingerprint =        values.fingerprint,                                                                                             
+                                -- signature =  values.signature,                                                                                                       
+                                ttl = values.ttl,                                                                                                                       
+                                proto = values.transport or 'tcp',                                                                                                      
+                                app_types = app_types                                                                                                                   
+                        }
+
+			-- convert quotes to &quot;
+			for i, field in pairs(fields) do
+				fields[i] = string.gsub(field,'"','&quot;')
+			end
+			
+			-- create fingerprint/signature
+			local msg = printf(signing_tmpl,fields)
+			local resp = luci.sys.exec("echo \"" .. msg .. "\" | serval-sign")
+			if (luci.sys.exec("echo $?") ~= '0') then
+				luci.http.status(500, "Internal Server Error")
+				return
+			end
+				
+			-- local resp = "098BA357CA5CCD639C95F9F7506B7AE1A5D07DE2E93FC8769968526AB0B47485B3FA83FCA2F3A69508BE3EB5122CC712CF68534109188A27329DCCC4C7C9DE03\nE9A3D9B81F386E5BCC5689640F98CFAB62CA15D4FADD78D234E6D7B765478D18"
+			_,_,fields.signature,fields.fingerprint = resp:find('([A-F0-9]+)\r?\n?([A-F0-9]+)')
+	
+			service_string = printf(tmpl,fields)
+
 			-- luci.sys.call("echo \"" .. service_string .. '\"')
 		
 			-- create service file, then restart avahi-daemon
