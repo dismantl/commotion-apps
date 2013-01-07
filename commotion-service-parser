@@ -1,0 +1,92 @@
+#!/bin/sh
+
+touch /etc/config/applications
+
+# Make sure avahi-client is running. If not, start it.
+if [ -z `pgrep avahi-client` ]; then
+	avahi-client &
+	sleep 2
+fi
+
+# Send signal to avahi-client so it will dump cache to /tmp/avahi-client.out 
+kill -s USR1 `pgrep avahi-client`
+sleep 2
+
+while read service; do
+	#parse $service
+	#format:
+	#	<interface>;<protocol>;<hostname long>;<type>;<domain>;<hostname.domain>;<ip addr>;<port>;<txt record>
+	#	     1     ;    2     ;        3      ;   4  ;   5    ;        6        ;    7    ;  8   ;      9
+
+	# Service advertisements must have txt records
+	txt=`echo $service | cut -d ';' -f9-`
+	if [ -z "$txt" ]; then
+		continue
+	fi
+
+	# get fingerprint/signature of service, compare to map of existing apps -> if fingerprint found, but sig different, update app
+	fingerprint=`echo $txt |grep -o fingerprint=[^\"]* |cut -c13-`
+	signature=`echo $txt |grep -o signature=[^\"]* |cut -c11-`
+
+	if [ -z $fingerprint ]; then
+		continue
+	fi
+
+	apps=`cat /etc/config/applications |grep "^config application " |cut -c21- |sed -e s/\'$//`
+	for app in $apps; do
+		if [ $app == $fingerprint ]; then
+			if [ `uci get applications.$app.signature` == $signature ]; then
+				match=true
+			fi
+		fi
+	done
+	if [ $match ]; then
+		continue
+	fi
+
+	# Add service information to UCI
+	APPNAME=`echo $txt |grep -o application=[^\"]* |cut -c13-`
+	UUID="$fingerprint"
+	uci set applications.$UUID=application
+	uci set applications.$UUID.name="$APPNAME"
+	protocol=`echo $service |awk -F ';' '{print $2}'`
+	uci set applications.$UUID.protocol="$protocol"
+	transport=`echo $service |awk -F ';' '{print $4}' |grep -o "[^_]*$"`
+	uci set applications.$UUID.transport="$transport"
+	nick=`echo $txt |grep -o nick=[^\"]* |cut -c6-`
+	uci set applications.$UUID.nick="$nick"
+	ttl=`echo $txt |grep -o ttl=[^\"]* |cut -c5-`
+	if [ -n $ttl ]; then
+		uci set applications.$UUID.ttl="$ttl"
+	fi
+	ipaddr=`echo $service | awk -F ';' '{print $7}'`
+	uci set applications.$UUID.ipaddr="$ipaddr"
+	port=`echo $service | awk -F ';' '{print $8}'`
+	if [ -n $port ]; then
+		uci set applications.$UUID.port="$port"
+	fi
+	uci set applications.$UUID.uuid="$UUID"
+	uci set applications.$UUID.fingerprint="$fingerprint"
+        uci set applications.$UUID.signature="$signature"
+	icon=`echo $txt |grep -o icon=[^\"]* |cut -c6-`
+	uci set applications.$UUID.icon="$icon"
+	description=`echo $txt |grep -o description=[^\"]* |cut -c13-`
+	uci set applications.$UUID.description="$description"
+
+	# Adding service types with whitespace in them takes some extra work
+	types=`echo $txt |grep -o type=[^\"]* |cut -c6- |sed 's/ /%#%#%#%#%/g'`
+	echo "$types"
+	uci delete applications.$UUID.type
+	uci set applications.$UUID.type="COMMOTION TYPE LIST PLACEHOLDER"
+	uci commit applications
+	typeList=""
+	for type in $types; do
+		type=`echo -n $type |sed -e 's/%#%#%#%#%/ /g'`
+		typeList="$typeList\n\tlist type '$type'"
+	done
+	typeList=`echo "$typeList" |cut -c3-`
+	sed -i -e "s/\toption type 'COMMOTION TYPE LIST PLACEHOLDER'/$typeList/" /etc/config/applications
+
+done < "/tmp/avahi-client.out"
+
+exit
