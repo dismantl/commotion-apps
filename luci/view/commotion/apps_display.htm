@@ -1,0 +1,38 @@
+<div id="types">
+<%-
+for typed, types in pairs(categories) do
+     catType = typed
+-%>
+<div class="type" id="<%=catType%>" style="display:none">
+  <% include("themes/" .. theme .. "/apps_categories") %>  
+  <div class="apps" id="<%=catType%>Apps" style="display:none">
+	<%-
+	   for i, app in pairs(types) do
+	       if app.name then
+	           name = app.name
+   	           nick = app.nick
+   	           url = app.ipaddr
+                   icon = app.icon
+   	           description = app.description
+	           uuid = app.uuid
+	           port = app.port
+	           if (app.approved) then
+	           	if (app.approved == '1') then
+	           		approved = "approved"
+	           	else
+	           		approved = "blacklisted"
+	           	end
+	           else
+	           	approved = "new"
+	           end
+	           fingerprint = app.fingerprint
+	           signature = app.signature
+	           localapp = app.localapp
+	-%>
+		   <% include("themes/" .. theme .. "/apps_apps") %>
+	       <%end%>
+	   <%end%>
+  </div>
+</div>
+<%end%>
+</div>

@@ -1,0 +1,13 @@
+<form method="get" action="<%=controller%>/apps/add" >
+  Application Name:<input type="text"  name="appName" /></br>
+  Application Nick Name:  <input type="text"  name="appNick" /></br>
+  ip Address of Service <input type="text"  name="IP" /></br>
+  Port of Service (Optional):<input type="text"  name="port" /></br>
+  Type of Application:</br>
+  <input type="checkbox" name="types" value="collaboration" />Collaboration: This is app that allows users to collaborate.</br>
+  <input type="checkbox" name="types" value="community" />Community: This is a app that supports community building or services.</br>
+  <input type="checkbox" name="types" value="circumvention" />Circumvention: This application increases the security or Privacy of users.</br>
+  <input type="checkbox" name="types" value="Cacophany" /> This application is absolutely ridiculous.</br>
+  URL of application Icon:<input type="url" name="source"></br>
+<input type="submit" value="Submit" />
+</form>

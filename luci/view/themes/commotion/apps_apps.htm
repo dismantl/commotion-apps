@@ -1,0 +1,10 @@
+<div class="app <%=uuid%> <%=approved%>">
+	<img src="<%=icon%>"  align="Left" style="padding-right:10px" width="85" height="85">
+	<h3><a href="<%=url%>"><%=name%></a></h3>
+	<p><%=description%></p>
+	<% if (admin_vars) then %>
+	  <button class="approve" onclick="return ApproveApp('<%=uuid%>')">Approve</button>
+	  <button class="blacklist" onclick="return BlacklistApp('<%=uuid%>')">Blacklist</button>
+	  <% if (not localapp) then %> <a class="edit" href="apps/list?app=<%=uuid%>">Edit</a><%end%>
+	<% end %>
+</div>

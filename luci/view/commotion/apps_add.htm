@@ -1,0 +1,71 @@
+<%+header%>
+<link rel="stylesheet" type="text/css" href="<%=media%>/apps.css" />
+
+<h2> Add an Application to the App Bazzar</h2>
+
+<form id="add_apps_form" method="get" action="<%=controller%>/apps/add_submit">
+  <fieldset>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Application Name:</label>
+      <div class="cbi-value-field">
+  <input type="text"  name="appName" />
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Application Nick Name:</label>
+      <div class="cbi-value-field">
+    <input type="text"  name="appNick" />
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Description:</label>
+      <div class="cbi-value-field">
+        <textarea rows="5"  name="desc"></textarea>
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">IP Address or URL of Service:</label>
+      <div class="cbi-value-field">
+   <input type="text"  name="IP" />
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Port of Service (Optional):</label>
+      <div class="cbi-value-field">
+  <input type="text"  name="port" />
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Type of Application:</label>
+      <div class="cbi-value-field"> 
+  <input type="checkbox" name="types" value="collaboration" />Collaboration: This is app that allows users to collaborate.<br />
+  <input type="checkbox" name="types" value="community app" />Community: This is a app that supports community building or services.<br />
+  <input type="checkbox" name="types" value="circumvention" />Circumvention: This application increases the security or Privacy of users.<br />
+  <input type="checkbox" name="types" value="Cacophany" /> This application is absolutely ridiculous.<br />
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">URL of application Icon:</label>
+      <div class="cbi-value-field">
+  <input type="text" name="icon">
+      </div>
+    </div>
+    <div class="cbi-value">                                                                                                                                             
+      <label class="cbi-value-title">Number of hops away this service should be seen (Optional):</label>                                                                                                   
+      <div class="cbi-value-field">                                                                                                                                     
+        <input type="text" name="ttl">                                                                                                                                      
+      </div>                                                                                                                                                            
+    </div> 
+    <div class="cbi-value">                                                                                                                                             
+      <label class="cbi-value-title">Transport type (Optional)</label>                                                                                                  
+      <div class="cbi-value-field">                                                                                                                                     
+        <select size="1" name="transport" class="cbi-input-select">                                                                                                     
+        <option value=""></option><option value="tcp">tcp</option><option value="udp">udp</option>                                                                      
+        </select>                                                                                                                                                       
+      </div>                                                                                                                                                            
+    </div>                  
+    </fieldset>
+<input class="cbi-button" type="submit" value="Submit" />
+</form>
+
+<%+footer%>

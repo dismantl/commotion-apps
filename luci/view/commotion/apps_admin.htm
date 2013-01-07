@@ -1,0 +1,20 @@
+<form action="<%=admin_vars.action%>" method="post">
+	<div class="cbi-map">
+		<ul id="tabs" class="cbi-tabmenu">
+			<li class="cbi-tab active">
+				<a id="new_apps" href="javascript:void(0);" onclick="filter_apps('new');">New Apps</a>
+			</li>
+			<li class="cbi-tab-disabled">
+				<a id="approved_apps" href="javascript:void(0);" onclick="filter_apps('approved')">Approved Apps</a>
+			</li>
+			<li class="cbi-tab-disabled">
+				<a id="blacklisted_apps" href="javascript:void(0);" onclick="filter_apps('blacklisted')">Blacklisted Apps</a>
+			</li>
+			<li class="cbi-tab-disabled" style="float:right">
+				<a id="edit_apps" href="apps/list">Edit Apps</a>
+			</li>
+		</ul>
+		<% include("commotion/apps_display") %>
+	</div>
+</form>
+

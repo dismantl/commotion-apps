@@ -1,0 +1,35 @@
+.apps {
+display:none;
+outline-width:2px;
+outline-color:#ff6699;
+outline-style:dashed;	
+}
+
+.app {
+padding:10px;
+}
+
+a, a:focus { outline: 0; }
+
+#add_apps_form label { width:180px; }
+
+#add_apps_form .cbi-value-field { margin-left: 200px; }
+
+input, textarea, select, .uneditable-input { width: 500px; }
+
+button.approve { background: url("check.png") no-repeat left center; }
+button.blacklist {background: url("x.png") no-repeat left center; }
+a.edit {background: url("equals.png") no-repeat left center; padding:10px 0 10px 40px;}
+
+button.approve, button.blacklist, a.edit {
+color:#FF6699;
+font-weight:bold;
+height:36px;
+margin-right:20px;
+padding-left:40px;
+}
+
+button:hover, a:hover {
+color:#66CCFF !important;
+text-decoration:underline;
+}

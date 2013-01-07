@@ -1,0 +1,4 @@
+	<img src="<%=icon%>"  align="Left" style="padding-right:10px" width="85" height="85">
+	<h3><a href="<%=ipaddr%>"><%=name%></a></h3>
+	<p><%=description%></p>
+	</br>

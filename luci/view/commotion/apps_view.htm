@@ -1,0 +1,23 @@
+<%+header%>
+<script type="text/javascript" src="<%=media%>/apps.js"></script>
+<link rel="stylesheet" type="text/css" href="<%=media%>/apps.css" />
+
+<h2><a id="content" name="content">Applications</a></h2>
+
+<%-
+ if (admin_vars) then
+ 	-%> <script type="text/javascript" src="<%=media%>/admin_apps.js"></script> <%-
+ 	include ("commotion/apps_admin")
+ else
+ 	-%>  <div style="height:1px;background:#DDDDDD;width:100%;margin:10px 0;"></div> <%-
+ 	include ("commotion/apps_display")  -%>
+ <script type="text/javascript">
+   var types = document.getElementById('types').children;
+   for (var i=0;i < types.length;i++) {
+     types[i].style.display = "block";
+   }
+ </script>
+ 
+<%end%>
+
+<%+footer%>
