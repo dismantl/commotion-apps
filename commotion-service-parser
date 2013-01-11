@@ -25,13 +25,14 @@ while read service; do
 	fi
 
 	# get fingerprint/signature of service, compare to map of existing apps -> if fingerprint found, but sig different, update app
-	fingerprint=`echo $txt |grep -o fingerprint=[^\"]* |cut -c13-`
-	signature=`echo $txt |grep -o signature=[^\"]* |cut -c11-`
+	fingerprint=`echo $txt |grep -o fingerprint=[^\"]* |cut -c13- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	signature=`echo $txt |grep -o signature=[^\"]* |cut -c11- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
 
 	if [ -z $fingerprint ]; then
 		continue
 	fi
 
+	match=''
 	apps=`cat /etc/config/applications |grep "^config application " |cut -c21- |sed -e s/\'$//`
 	for app in $apps; do
 		if [ $app == $fingerprint ]; then
@@ -44,38 +45,82 @@ while read service; do
 		continue
 	fi
 
-	# Add service information to UCI
-	APPNAME=`echo $txt |grep -o application=[^\"]* |cut -c13-`
+	# Gather service information
+	APPNAME=`echo $txt |grep -o application=[^\"]* |cut -c13- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
 	UUID="$fingerprint"
+	protocol=`echo $service |awk -F ';' '{print $2}' |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	transport=`echo $service |awk -F ';' '{print $4}' |grep -o "[^_]*$" |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	full_type=`echo $service |awk -F ';' '{print $4}'`
+	domain=`echo $service |awk -F ';' '{print $5}'`
+	nick=`echo $txt |grep -o nick=[^\"]* |cut -c6- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	ttl=`echo $txt |grep -o ttl=[^\"]* |cut -c5-`
+	# ipaddr=`echo $service | awk -F ';' '{print $7}' |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g`
+	ipaddr=`echo $txt |grep -o ipaddr=[^\"]* |cut -c8- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g`
+	port=`echo $service | awk -F ';' '{print $8}'`
+	service_uuid=`echo $txt |grep -o uuid=[^\"]* |cut -c6- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	icon=`echo $txt |grep -o icon=[^\"]* |cut -c6- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g`
+	description=`echo $txt |grep -o description=[^\"]* |cut -c13- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	types=`echo $txt |grep -o type=[^\"]* |cut -c6- |sed 's/ /%#%#%#%#%/g' |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+
+	##################### INPUT VALIDATION/SANITIZING ##########################
+	# HTML ENCODING: sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g
+	# URL ENCODING: sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g
+	# is_uint: grep -E "^[[:digit:]]+$"
+	# is_port: if [ $? -eq 0 -a $test -ge 0 -a $test -le 65535 ]
+	# uci_encode: awk 'BEGIN{FS="";for(n=0;n<256;n++)ord[sprintf("%c",n)]=n}{for(i=1;i<=NF;i++)if(match($i,/[a-zA-Z0-9]/)){printf $i} else {printf "_"ord[$i]}}'
+	echo "$ttl" |grep -E "^[[:digit:]]+$"
+	if [ $? -ne 0 ]; then
+		continue
+	fi
+	
+	echo "$port" |grep -E "^[[:digit:]]+$"
+	if [ $? -ne 0 -o $port -lt 0 -o $port -gt 65535 ]; then
+		continue
+	fi
+	
+	##################### VERIFY SIGNATURE ##########################
+	app_types=''
+	for type in $types; do
+		type=`echo -n $type |sed -e 's/%#%#%#%#%/ /g'`
+		app_types="$app_types<txt-record>type=$type</txt-record>"
+	done
+	sig_tmpl="<type>$full_type</type>
+<domain-name>$domain</domain-name>
+<port>$port</port>
+<txt-record>application=$APPNAME</txt-record>
+<txt-record>nick=$nick</txt-record>
+<txt-record>ttl=$ttl</txt-record>
+<txt-record>ipaddr=$ipaddr</txt-record>
+$app_types
+<txt-record>icon=$icon</txt-record>
+<txt-record>description=$description</txt-record>"
+	echo "$sig_tmpl" |serval-verify -s $signature -i $fingerprint
+	if [ `echo $?` != '0' ]; then
+		echo -e "service failed verification\n"
+		echo -e "[$sig_tmpl]\n"
+		continue
+	fi
+
+	# Submit service information to UCI
 	uci set applications.$UUID=application
 	uci set applications.$UUID.name="$APPNAME"
-	protocol=`echo $service |awk -F ';' '{print $2}'`
 	uci set applications.$UUID.protocol="$protocol"
-	transport=`echo $service |awk -F ';' '{print $4}' |grep -o "[^_]*$"`
 	uci set applications.$UUID.transport="$transport"
-	nick=`echo $txt |grep -o nick=[^\"]* |cut -c6-`
 	uci set applications.$UUID.nick="$nick"
-	ttl=`echo $txt |grep -o ttl=[^\"]* |cut -c5-`
 	if [ -n $ttl ]; then
 		uci set applications.$UUID.ttl="$ttl"
 	fi
-	ipaddr=`echo $service | awk -F ';' '{print $7}'`
 	uci set applications.$UUID.ipaddr="$ipaddr"
-	port=`echo $service | awk -F ';' '{print $8}'`
 	if [ -n $port ]; then
 		uci set applications.$UUID.port="$port"
 	fi
-	uci set applications.$UUID.uuid="$UUID"
+	uci set applications.$UUID.uuid="$service_uuid"
 	uci set applications.$UUID.fingerprint="$fingerprint"
         uci set applications.$UUID.signature="$signature"
-	icon=`echo $txt |grep -o icon=[^\"]* |cut -c6-`
 	uci set applications.$UUID.icon="$icon"
-	description=`echo $txt |grep -o description=[^\"]* |cut -c13-`
 	uci set applications.$UUID.description="$description"
 
 	# Adding service types with whitespace in them takes some extra work
-	types=`echo $txt |grep -o type=[^\"]* |cut -c6- |sed 's/ /%#%#%#%#%/g'`
-	echo "$types"
 	uci delete applications.$UUID.type
 	uci set applications.$UUID.type="COMMOTION TYPE LIST PLACEHOLDER"
 	uci commit applications

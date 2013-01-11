@@ -5,6 +5,6 @@
 	<% if (admin_vars) then %>
 	  <button class="approve" onclick="return ApproveApp('<%=uuid%>')">Approve</button>
 	  <button class="blacklist" onclick="return BlacklistApp('<%=uuid%>')">Blacklist</button>
-	  <% if (not localapp) then %> <a class="edit" href="apps/list?app=<%=uuid%>">Edit</a><%end%>
+	  <% if (localapp) then %> <a class="edit" href="apps/list?app=<%=uuid%>">Edit</a><%end%>
 	<% end %>
 </div>
