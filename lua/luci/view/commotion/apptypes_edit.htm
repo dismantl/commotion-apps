@@ -1,0 +1,27 @@
+<%+header%>
+
+<link rel="stylesheet" type="text/css" href="<%=media%>/apps.css" />
+<script type="text/javascript" src="/luci-static/resources/cbi.js"></script>
+
+<h2>Application Categories</h2>
+<div class="cbi-map-descr">Here you can modify, add, or remove application categories used on this node when creating or updating applications.</div>
+
+<form id="edit_apptype_form" method="get" action="<%=controller%>/admin/commotion/apps/types_submit" autocomplete="off">
+  <fieldset>
+    <div class="cbi-value">
+      <label class="cbi-value-title" for="app_type">Types:</label>
+      <div class="cbi-value-field">
+	<% for i, app_type in pairs(types) do %>
+	  <input type="text" name="app_type" value="<%=app_type%>" class="cbi-input-text" /><br>
+	<% end %>
+	<script type="text/javascript">cbi_dynlist_init('app_type', '/luci-static/resources', '', true);</script>
+      </div>
+    </div>
+  </fieldset>
+  <div class="cbi-page-actions">
+	<input type="submit" value="Submit" class="cbi-button cbi-button-save">
+	<input type="reset" value="Reset" class="cbi-button cbi-button-reset">
+  </div>
+</form>
+
+<%+footer%>

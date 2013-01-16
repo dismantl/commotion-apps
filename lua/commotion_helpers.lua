@@ -1,7 +1,7 @@
 function DIE(str)
 	luci.http.status(500, "Internal Server Error")
 	luci.http.close()
-	luci.sys.call("echo " .. str)
+	luci.sys.call("echo \"" .. str .. '"')
 end
 
 function uci_encode(str)
@@ -12,7 +12,7 @@ function uci_encode(str)
 end
 
 function html_encode(str)
-  return string.gsub(str,"[<>&\n\r]",function(c) return html_replacements[c] or c end)
+  return string.gsub(str,"[<>&\n\r\"]",function(c) return html_replacements[c] or c end)
 end
 
 function url_encode(str)
@@ -33,7 +33,7 @@ function log(msg)
 			log('}')
 		end
 	else
-		luci.sys.exec("logger -t luci " .. msg)
+		luci.sys.exec("logger -t luci \"" .. tostring(msg) .. '"')
 	end
 end
 
@@ -53,20 +53,26 @@ function is_uint(str)
 	return str:find("^%d+$")
 end
 
+function is_hex(str)
+	return str:find("^%x+$")
+end
+
 function is_port(str)
 	return is_uint(str) and tonumber(str) >= 0 and tonumber(str) <= 65535
 end
 
-html_replacements = { 
+html_replacements = {
    ["<"] = "&lt;",
    [">"] = "&gt;",
    ["&"] = "&amp;",
-   ["\n"] = "<br>",
-   ["\r"] = ""
+   ["\n"] = "&#10;",
+   ["\r"] = "&#13;",
+   ["\""] = "&quot;"
    }
 
 url_replacements = {
    ["<"] = "%3C",
    [">"] = "%3E",
-   [" "] = "%20"
+   [" "] = "%20",
+   ['"'] = "%22"
    }

@@ -1,3 +1,4 @@
+<fieldset>
 <div id="types">
 <%-
 for typed, types in pairs(categories) do
@@ -7,17 +8,13 @@ for typed, types in pairs(categories) do
   <% include("themes/" .. theme .. "/apps_categories") %>  
   <div class="apps" id="<%=catType%>Apps" style="display:none">
 	<%-
+	   this_app = {}
 	   for i, app in pairs(types) do
-	       if app.name then
-	           name = app.name
-   	           nick = app.nick
-   	           url = app.ipaddr
-                   icon = app.icon
-   	           description = app.description
-	           uuid = app.uuid
-	           port = app.port
-	           if (app.approved) then
-	           	if (app.approved == '1') then
+		this_app = app
+	       if this_app.name then
+   	           this_app.description = this_app.description:gsub("&#13;&#10;","<br>")
+	           if (this_app.approved) then
+	           	if (this_app.approved == '1') then
 	           		approved = "approved"
 	           	else
 	           		approved = "blacklisted"
@@ -25,9 +22,6 @@ for typed, types in pairs(categories) do
 	           else
 	           	approved = "new"
 	           end
-	           fingerprint = app.fingerprint
-	           signature = app.signature
-	           localapp = app.localapp
 	-%>
 		   <% include("themes/" .. theme .. "/apps_apps") %>
 	       <%end%>
@@ -36,3 +30,4 @@ for typed, types in pairs(categories) do
 </div>
 <%end%>
 </div>
+</fieldset>

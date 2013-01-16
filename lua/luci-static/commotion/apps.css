@@ -2,7 +2,8 @@
 display:none;
 outline-width:2px;
 outline-color:#ff6699;
-outline-style:dashed;	
+outline-style:dashed;
+margin-top:8px;
 }
 
 .app {

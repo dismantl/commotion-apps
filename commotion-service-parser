@@ -1,5 +1,8 @@
 #!/bin/sh
 
+PLACEHOLDER="#@#@#@#@#@"
+NEWLINE_PLACEHOLDER="#%#%#%#%#%#%"
+
 touch /etc/config/applications
 
 # Make sure avahi-client is running. If not, start it.
@@ -12,7 +15,7 @@ fi
 kill -s USR1 `pgrep avahi-client`
 sleep 2
 
-while read service; do
+while read -r service; do
 	#parse $service
 	#format:
 	#	<interface>;<protocol>;<hostname long>;<type>;<domain>;<hostname.domain>;<ip addr>;<port>;<txt record>
@@ -24,14 +27,20 @@ while read service; do
 		continue
 	fi
 
-	# get fingerprint/signature of service, compare to map of existing apps -> if fingerprint found, but sig different, update app
-	fingerprint=`echo $txt |grep -o fingerprint=[^\"]* |cut -c13- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
-	signature=`echo $txt |grep -o signature=[^\"]* |cut -c11- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	# get fingerprint/signature of service
+	fingerprint=`echo $txt |grep -o fingerprint=[^\"]* |cut -c13-`
+	signature=`echo $txt |grep -o signature=[^\"]* |cut -c11-`
 
-	if [ -z $fingerprint ]; then
+	# make sure fingerprint and signature are hex strings of the correct length
+	if [ -z "`echo "$fingerprint" |grep -E "^[[:xdigit:]]+$"`" -o \
+		-z "`echo "$signature" |grep -E "^[[:xdigit:]]+$"`" -o \
+		"`expr length "$fingerprint"`" != "64" -o \
+		"`expr length "$signature"`" != "128" ]; then
+		
 		continue
 	fi
 
+	# if service found in UCI, compare signatures. if sigs different, update app
 	match=''
 	apps=`cat /etc/config/applications |grep "^config application " |cut -c21- |sed -e s/\'$//`
 	for app in $apps; do
@@ -46,42 +55,44 @@ while read service; do
 	fi
 
 	# Gather service information
-	APPNAME=`echo $txt |grep -o application=[^\"]* |cut -c13- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	APPNAME=`echo $txt |grep -o application=[^\"]* |cut -c13- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	UUID="$fingerprint"
-	protocol=`echo $service |awk -F ';' '{print $2}' |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
-	transport=`echo $service |awk -F ';' '{print $4}' |grep -o "[^_]*$" |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	protocol=`echo $service |awk -F ';' '{print $2}' |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
+	transport=`echo $service |awk -F ';' '{print $4}' |grep -o "[^_]*$" |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	full_type=`echo $service |awk -F ';' '{print $4}'`
 	domain=`echo $service |awk -F ';' '{print $5}'`
-	nick=`echo $txt |grep -o nick=[^\"]* |cut -c6- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	nick=`echo $txt |grep -o nick=[^\"]* |cut -c6- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	ttl=`echo $txt |grep -o ttl=[^\"]* |cut -c5-`
-	# ipaddr=`echo $service | awk -F ';' '{print $7}' |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g`
-	ipaddr=`echo $txt |grep -o ipaddr=[^\"]* |cut -c8- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g`
+	ipaddr=`echo $txt |grep -o ipaddr=[^\"]* |cut -c8- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g |sed -e s/'"'/"%22"/g`
 	port=`echo $service | awk -F ';' '{print $8}'`
-	service_uuid=`echo $txt |grep -o uuid=[^\"]* |cut -c6- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
-	icon=`echo $txt |grep -o icon=[^\"]* |cut -c6- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g`
-	description=`echo $txt |grep -o description=[^\"]* |cut -c13- |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
-	types=`echo $txt |grep -o type=[^\"]* |cut -c6- |sed 's/ /%#%#%#%#%/g' |sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g`
+	service_uuid=`echo $txt |grep -o uuid=[^\"]* |cut -c6- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
+	icon=`echo $txt |grep -o icon=[^\"]* |cut -c6- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g |sed -e s/'"'/"%22"/g`
+	description=`echo $txt |grep -o description=[^\"]* |cut -c13- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
+	types=`echo $txt |grep -o type=[^\"]* |cut -c6- |sed 's/ /$PLACEHOLDER/g' |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 
 	##################### INPUT VALIDATION/SANITIZING ##########################
-	# HTML ENCODING: sed -e s/"&"/"\&amp\;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g
-	# URL ENCODING: sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g
+	# HTML ENCODING: sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g
+	# URL ENCODING: sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g |sed -e s/'"'/"%22"/g
 	# is_uint: grep -E "^[[:digit:]]+$"
+	# is_hex: grep -E "^[[:xdigit:]]+$"
 	# is_port: if [ $? -eq 0 -a $test -ge 0 -a $test -le 65535 ]
 	# uci_encode: awk 'BEGIN{FS="";for(n=0;n<256;n++)ord[sprintf("%c",n)]=n}{for(i=1;i<=NF;i++)if(match($i,/[a-zA-Z0-9]/)){printf $i} else {printf "_"ord[$i]}}'
-	echo "$ttl" |grep -E "^[[:digit:]]+$"
-	if [ $? -ne 0 ]; then
+	
+	if [ -z "`echo "$ttl" |grep -E "^[[:digit:]]+$"`" ]; then
 		continue
 	fi
 	
-	echo "$port" |grep -E "^[[:digit:]]+$"
-	if [ $? -ne 0 -o $port -lt 0 -o $port -gt 65535 ]; then
+	if [ -z "`echo "$port" |grep -E "^[[:digit:]]+$"`" -o "$port" -lt 0 -o "$port" -gt 65535 ]; then
 		continue
+	fi
+	if [ "$port" == "0" ]; then
+		port=""
 	fi
 	
 	##################### VERIFY SIGNATURE ##########################
 	app_types=''
 	for type in $types; do
-		type=`echo -n $type |sed -e 's/%#%#%#%#%/ /g'`
+		type=`echo -n $type |sed -e 's/$PLACEHOLDER/ /g'`
 		app_types="$app_types<txt-record>type=$type</txt-record>"
 	done
 	sig_tmpl="<type>$full_type</type>
@@ -94,10 +105,11 @@ while read service; do
 $app_types
 <txt-record>icon=$icon</txt-record>
 <txt-record>description=$description</txt-record>"
+
 	echo "$sig_tmpl" |serval-verify -s $signature -i $fingerprint
 	if [ `echo $?` != '0' ]; then
-		echo -e "service failed verification\n"
-		echo -e "[$sig_tmpl]\n"
+		echo "Service failed verification"
+		echo "$sig_tmpl"
 		continue
 	fi
 
@@ -122,15 +134,15 @@ $app_types
 
 	# Adding service types with whitespace in them takes some extra work
 	uci delete applications.$UUID.type
-	uci set applications.$UUID.type="COMMOTION TYPE LIST PLACEHOLDER"
+	uci set applications.$UUID.type="$PLACEHOLDER"
 	uci commit applications
 	typeList=""
 	for type in $types; do
-		type=`echo -n $type |sed -e 's/%#%#%#%#%/ /g'`
+		type=`echo -n $type |sed -e 's/$PLACEHOLDER/ /g'`
 		typeList="$typeList\n\tlist type '$type'"
 	done
 	typeList=`echo "$typeList" |cut -c3-`
-	sed -i -e "s/\toption type 'COMMOTION TYPE LIST PLACEHOLDER'/$typeList/" /etc/config/applications
+	sed -i -e "s/\toption type '$PLACEHOLDER'/$typeList/" /etc/config/applications
 
 done < "/tmp/avahi-client.out"
 
