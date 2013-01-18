@@ -1,0 +1,104 @@
+<%+header%>
+
+<link rel="stylesheet" type="text/css" href="<%=media%>/apps.css" />
+
+<h2>
+  <% if page.type == "add" then %>
+    Add an Application
+  <% else %>
+    Edit <%=app.name%>
+  <% end %>
+</h2>
+<% if err and err.notice ~= "" then %><div class="notice"><%=err.notice%></div><% end %>
+
+<form id="apps_form" method="get" <% if page.type == "edit" then %>autocomplete="off"<% end %> action="<%=controller%><%=page.action%>">
+  <fieldset>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Application Name:</label>
+      <div class="cbi-value-field">
+  	<input type="text"  name="name" <% if app then %>value="<%=app.name%>"<% end %>/>
+  	<%if err then%><div class="error"><%=err.name%></div><%end%>
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Application Nick Name:</label>
+      <div class="cbi-value-field">
+    	<input type="text"  name="nick" <% if app then %>value="<%=app.nick%>"<% end %>/>
+    	<%if err then%><div class="error"><%=err.nick%></div><%end%>
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Description:</label>
+      <div class="cbi-value-field">
+        <textarea rows="5"  name="description"><% if app then %><%=app.description%><% end %></textarea>
+        <%if err then%><div class="error"><%=err.description%></div><%end%>
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">IP Address or URL of Service:</label>
+      <div class="cbi-value-field">
+   	<input type="text"  name="ipaddr" <% if app then %>value="<%=app.ipaddr%>"<% end %>/>
+   	<%if err then%><div class="error"><%=err.ipaddr%></div><%end%>
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Port of Service (Optional):</label>
+      <div class="cbi-value-field">
+  	<input type="text"  name="port" <% if app then %>value="<%=app.port%>"<% end %>/>
+  	<%if err then%><div class="error"><%=err.port%></div><%end%>
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">Type of Application:</label>
+      <div class="cbi-value-field">
+  	<%=types_string%>
+      </div>
+    </div>
+    <div class="cbi-value">
+      <label class="cbi-value-title">URL of application Icon:</label>
+      <div class="cbi-value-field">
+  	<input type="text" name="icon" <% if app then %>value="<%=app.icon%>"<% end %>/>
+  	<%if err then%><div class="error"><%=err.icon%></div><%end%>
+      </div>
+    </div>
+    <div class="cbi-value">                                                                                                                                             
+      <label class="cbi-value-title">Number of hops away this service should be seen (Optional):</label>                                                                                                   
+      <div class="cbi-value-field">                                                                                                                                     
+        <input type="text" name="ttl" <% if app then %>value="<%=app.ttl%>"<% end %>/>    
+        <%if err then%><div class="error"><%=err.ttl%></div><%end%>
+      </div>                                                                                                                                                            
+    </div> 
+    <div class="cbi-value">                                                                                                                                             
+      <label class="cbi-value-title">Transport type (Optional):</label>                                                                                                  
+      <div class="cbi-value-field">                                                                                                                                     
+        <select size="1" name="transport" class="cbi-input-select">                                                                                                     
+        <option value=""></option>
+        <option value="tcp"<% if app and app.transport == "tcp" then %> selected<% end %>>tcp</option>
+        <option value="udp"<% if app and app.transport == "udp" then %> selected<% end %>>udp</option>                                                                      
+        </select>
+      </div>                                                                                                                                                            
+    </div>
+    <% if page.type == "edit" then %>
+      <div class="cbi-value">
+        <label class="cbi-value-title">Approved:</label>
+	<div class="cbi-value-field">                                                                                                                                     
+          <select size="1" name="approved" class="cbi-input-select">                                                                                                     
+          <option value=""></option>
+          <option value="1"<% if (app.approved == "1") then %> selected<% end %>>approved</option>
+          <option value="0"<% if (app.approved == "0") then %> selected<% end %>>blacklisted</option>                                                                      
+          </select>
+        </div>                                                                                                                                                            
+      </div>
+    <% end %>
+    </fieldset>
+    <% if page.type == "edit" then %>
+      <input type="hidden" name="uuid" value="<%=app.uuid%>" />
+      <% if app.fingerprint then %><input type="hidden" name="fingerprint" value="<%=app.fingerprint%>" /><% end %>
+    <% end %>
+    <div class="cbi-page-actions">
+	<input type="submit" value="Submit" class="cbi-button cbi-button-save">
+	<input type="reset" value="Reset" class="cbi-button cbi-button-reset">
+    </div>
+</form>
+
+<%+footer%>

@@ -61,6 +61,15 @@ function is_port(str)
 	return is_uint(str) and tonumber(str) >= 0 and tonumber(str) <= 65535
 end
 
+function table.contains(table, element)
+	for _, value in pairs(table) do
+		if value == element then
+			return true
+		end
+	end
+	return false
+end
+
 html_replacements = {
    ["<"] = "&lt;",
    [">"] = "&gt;",

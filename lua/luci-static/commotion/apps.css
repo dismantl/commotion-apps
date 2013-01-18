@@ -10,11 +10,35 @@ margin-top:8px;
 padding:10px;
 }
 
+.app img {
+padding-right:10px;
+}
+
+.div-bar {
+height:1px;
+background:#DDDDDD;
+width:100%;
+margin:10px 0;
+}
+
 a, a:focus { outline: 0; }
 
-#add_apps_form label { width:180px; }
+.notice {
+background:#ffbdd3;
+border:2px solid #FF6699;
+border-radius:5px;
+padding:5px;
+margin:5px 0;
+}
 
-#add_apps_form .cbi-value-field { margin-left: 200px; }
+.error {
+color:#FF6699;
+font-weight:bold;
+}
+
+#apps_form label { width:180px; }
+
+#apps_form .cbi-value-field { margin-left: 200px; }
 
 input, textarea, select, .uneditable-input { width: 500px; }
 
