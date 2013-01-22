@@ -32,8 +32,8 @@ function index()
     entry({"apps", "add_submit"}, call("action_add")).dependent=true
     entry({"admin", "commotion", "apps", "edit"}, call("admin_edit_app")).dependent=true
     entry({"admin", "commotion", "apps", "edit_submit"}, call("action_edit")).dependent=true
-    entry({"admin", "commotion", "apps", "types"}, call("admin_edit_types")).dependent=true
-    entry({"admin", "commotion", "apps", "types_submit"}, call("action_types")).dependent=true
+    entry({"admin", "commotion", "apps", "settings"}, call("admin_edit_settings")).dependent=true
+    entry({"admin", "commotion", "apps", "settings_submit"}, call("action_settings")).dependent=true
     entry({"admin", "commotion", "apps", "blacklist"}, call("blacklist_app")).dependent=true
     entry({"admin", "commotion", "apps", "approve"}, call("approve_app")).dependent=true
 end
@@ -101,7 +101,7 @@ end
 function add_app(error_info, bad_data)
 	local uci = luci.model.uci.cursor()
 	local type_tmpl = '<input type="checkbox" name="type" value="${type_escaped}" ${checked}/>${type}<br />'
-	local type_categories = uci:get_list("applications","app_categories","category")
+	local type_categories = uci:get_list("applications","settings","category")
 	local types_string = ''
 	if (bad_data and bad_data.type) then
 		for i, type_category in pairs(type_categories) do
@@ -127,7 +127,7 @@ function admin_edit_app(error_info, bad_data)
 	local UUID, app_data, types_string
 	local uci = luci.model.uci.cursor()
 	local type_tmpl = '<input type="checkbox" name="type" value="${type_escaped}" ${checked}/>${type}<br />'
-	local type_categories = uci:get_list("applications","app_categories","category")
+	local type_categories = uci:get_list("applications","settings","category")
 	
 	if (not bad_data) then
 		-- get app id from GET parameter
@@ -173,15 +173,28 @@ function admin_edit_app(error_info, bad_data)
 	luci.template.render("commotion/apps_form", {types_string=types_string, app=app_data, err=error_info, page={type="edit", action="/admin/commotion/apps/edit_submit"}})
 end
 
-function admin_edit_types()
+function admin_edit_settings(error_info, bad_expiration)
+	local expiration
 	local uci = luci.model.uci.cursor()
-	local types = uci:get_list("applications","app_categories","category")
-	luci.template.render("commotion/apptypes_edit", {types=types})
+	local types = uci:get_list("applications","settings","category")
+	if (bad_expiration) then
+		expiration = bad_expiration
+	else
+		expiration = uci:get("applications","settings","expiration")
+	end
+	luci.template.render("commotion/apps_settings", {types=types, expiration=expiration, err=error_info})
 end
 
-function action_types()
+function action_settings()
 	local uci = luci.model.uci.cursor()
-	if (luci.http.formvalue("app_type") ~= nil) then
+	local error_info = {}
+	if (not luci.http.formvalue("expiration") or luci.http.formvalue("expiration") == '' or not is_uint(luci.http.formvalue("expiration"))) then
+		error_info.expiration = "Expiration value must be integer greater than zero"
+	end
+	if (not luci.http.formvalue("app_type") or luci.http.formvalue("app_type") == '') then
+		-- uci:delete('applications', "settings", "category") -- !!!!!!!!!!!!!!!! change this !!!!!!!!!!!!!!!!!!!!!!
+		error_info.app_type = "Must include at least one category"
+	else
 		for i, app_type in pairs(luci.http.formvalue("app_type")) do
 			if (app_type == '') then
 				table.remove(luci.http.formvalue("app_type"),i)
@@ -189,13 +202,18 @@ function action_types()
 				luci.http.formvalue("app_type")[i] = html_encode(app_type)
 			end
 		end
-		uci:set_list('applications', "app_categories", "category", luci.http.formvalue("app_type"))
-	else
-		uci:delete('applications', "app_categories", "category")
 	end
-	uci:save('applications')
-	uci:commit('applications')
-	luci.http.redirect("../apps")
+	if (next(error_info)) then
+		error_info.notice = "Invalid entries. Please review the fields below."
+		admin_edit_settings(error_info,luci.http.formvalue("expiration"))
+		return
+	else
+		uci:set_list("applications", "settings", "category", luci.http.formvalue("app_type"))
+		uci:set("applications","settings","expiration",luci.http.formvalue("expiration"))
+		uci:save("applications")
+		uci:commit("applications")
+		luci.http.redirect("../apps")
+	end
 end
 
 function action_add(edit_app)
@@ -204,6 +222,7 @@ function action_add(edit_app)
 	local uci = luci.model.uci.cursor()
 	local bad_data = {}
 	local error_info = {}
+	local expiration = uci:get("applications","settings","expiration")
 	
 	values = {
 		  name =  luci.http.formvalue("name"),
@@ -236,7 +255,7 @@ function action_add(edit_app)
 	end
 	
 	if (edit_app) then
-		if (luci.http.formvalue("approved") and luci.http.formvalue("approved") ~= '' and (tonumber(luci.http.formvalue("approved")) < 0 or tonumber(luci.http.formvalue("approved")) > 1)) then
+		if (luci.http.formvalue("approved") and luci.http.formvalue("approved") ~= '' and (tonumber(luci.http.formvalue("approved")) ~= 0 and tonumber(luci.http.formvalue("approved")) ~= 1)) then
 			DIE("Invalid approved value") -- fail since this shouldn't happen with a dropdown form
 			return
 		end
@@ -244,7 +263,7 @@ function action_add(edit_app)
 	end
 	
 	-- escape input strings
-        for i, field in pairs(values) do
+	for i, field in pairs(values) do
 		if (i ~= 'ipaddr' and i ~= 'icon') then
 	                values[i] = html_encode(field)
 		else
@@ -253,8 +272,8 @@ function action_add(edit_app)
         end
 	
 	-- make sure application types are within the set of approved categories on node
-			if (luci.http.formvalue("type")) then
-		app_types = uci:get_list("applications","app_categories","category")
+	if (luci.http.formvalue("type")) then
+		app_types = uci:get_list("applications","settings","category")
 		for i, type in pairs(luci.http.formvalue("type")) do
 			if (not table.contains(app_types, type)) then
 				DIE("Invalid application type value")
@@ -333,6 +352,9 @@ function action_add(edit_app)
 		end
 	end
 	
+	-- Add expiration time
+	values.expiration = os.date("%c",os.time() + expiration)
+	
 	if (values.ttl == '') then values.ttl = '0' end
 	
 	-- #################################################################
@@ -350,7 +372,8 @@ function action_add(edit_app)
 <txt-record>ipaddr=${ipaddr}</txt-record>
 ${app_types}
 <txt-record>icon=${icon}</txt-record>
-<txt-record>description=${description}</txt-record>]]
+<txt-record>description=${description}</txt-record>
+<txt-record>expiration=${expiration}</txt-record>]]
 		tmpl = [[
 <?xml version="1.0" standalone='no'?><!--*-nxml-*-->
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
@@ -416,7 +439,8 @@ ${app_types}
 		  description = values.description,
 		  ttl = values.ttl,
 		  proto = values.transport or 'tcp',
-		  app_types = app_types
+		  app_types = app_types,
+		  expiration = expiration
 		}
 		
 		-- Create Serval identity keypair for service, then sign service advertisement with it

@@ -11,7 +11,7 @@ if [ -z `pgrep avahi-client` ]; then
 	sleep 2
 fi
 
-# Send signal to avahi-client so it will dump cache to /tmp/avahi-client.out 
+# Send signal to avahi-client so it will dump cache to /tmp/avahi-client.out
 kill -s USR1 `pgrep avahi-client`
 sleep 2
 
@@ -69,6 +69,7 @@ while read -r service; do
 	icon=`echo $txt |grep -o icon=[^\"]* |cut -c6- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g |sed -e s/'"'/"%22"/g`
 	description=`echo $txt |grep -o description=[^\"]* |cut -c13- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	types=`echo $txt |grep -o type=[^\"]* |cut -c6- |sed 's/ /$PLACEHOLDER/g' |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
+	expiration=`echo $txt |grep -o expiration=[^\"]* |cut -c12- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 
 	##################### INPUT VALIDATION/SANITIZING ##########################
 	# HTML ENCODING: sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g
@@ -93,6 +94,10 @@ while read -r service; do
 		port=""
 	fi
 	
+	if [ -n "$expiration" -a -z "`echo "$expiration" |grep -E "^[[:digit:]]+$"`" ]; then
+		continue
+	fi
+	
 	##################### VERIFY SIGNATURE ##########################
 	app_types=''
 	for type in $types; do
@@ -108,7 +113,8 @@ while read -r service; do
 <txt-record>ipaddr=$ipaddr</txt-record>
 $app_types
 <txt-record>icon=$icon</txt-record>
-<txt-record>description=$description</txt-record>"
+<txt-record>description=$description</txt-record>
+<txt-record>expiration=$expiration</txt-record>"
 
 	echo "$sig_tmpl" |serval-verify -s $signature -i $fingerprint
 	if [ `echo $?` != '0' ]; then
@@ -135,9 +141,15 @@ $app_types
         uci set applications.$UUID.signature="$signature"
 	uci set applications.$UUID.icon="$icon"
 	uci set applications.$UUID.description="$description"
+	if [ -n $expiration ]; then
+		expiration_time=`date +%c -D %s -d $(( $(date +%s) +$expiration ))`
+		uci set applications.$UUID.expiration="$expiration_time"
+	fi
 
+	echo "about to set /etc/config/applications"
 	# Adding service types with whitespace in them takes some extra work
 	uci delete applications.$UUID.type
+	echo "1"
 	uci set applications.$UUID.type="$PLACEHOLDER"
 	uci commit applications
 	typeList=""
@@ -145,9 +157,36 @@ $app_types
 		type=`echo -n $type |sed -e 's/$PLACEHOLDER/ /g'`
 		typeList="$typeList\n\tlist type '$type'"
 	done
-	typeList=`echo "$typeList" |cut -c3- |sed -e s/"\&"/"\\\\\&"/`
-	sed -i -e s/"\toption type '$PLACEHOLDER'"/"$typeList"/ /etc/config/applications
+	echo "$typeList"
+	typeList=`echo "$typeList" |cut -c3- |sed -e s/"\&"/'\\\\\\\&'/`
+	echo "$PLACEHOLDER"
+	echo "$typeList"
+	#sed -i -e s/"\toption type '$PLACEHOLDER'"/"$typeList"/ /etc/config/applications
+	# this awk script will replace only the last occurance of $PLACEHOLDER, instead of sed which replaces all occurances
+	awk -v PLACEHOLDER="$PLACEHOLDER" -v typeList="$typeList" "/\toption type \x27$PLACEHOLDER\x27/"'{x=NR} {a[NR]=$0;}END{for(i=1;i<=NR;i++){if(i==x){gsub("\toption type \x27" PLACEHOLDER "\x27",typeList,a[i]);print a[i];}else{ print a[i];}}}' /etc/config/applications > /tmp/applications
+	cp /tmp/applications /etc/config/applications
 
 done < "/tmp/avahi-client.out"
+
+# remove expired advertisements from UCI
+# if expired UCI entry has fingerprint/signature and localapp, rm /etc/avahi/services/<fingerprint>.service
+now=`date +%s`
+for app in $apps; do
+	app_expiration=`uci get applications.$app.expiration`
+	if [ -z "$app_expiration" ]; then
+		continue
+	fi
+	if [ `date +%s -D %c -d "$app_expiration"` -le "$now" ]; then
+		app_fingerprint=`uci get applications.$app.fingerprint`
+		localapp=`uci get applications.$app.localapp`
+		if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" -eq 1 ]; then
+			#remove avahi service file
+			rm /etc/avahi/services/$app_fingerprint.service
+		fi
+		# remove entry
+		uci delete applications.$app
+	fi
+done
+uci commit applications
 
 exit

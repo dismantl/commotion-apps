@@ -11,7 +11,7 @@
 </h2>
 <% if err and err.notice ~= "" then %><div class="notice"><%=err.notice%></div><% end %>
 
-<form id="apps_form" method="get" <% if page.type == "edit" then %>autocomplete="off"<% end %> action="<%=controller%><%=page.action%>">
+<form class="apps_form" method="post" <% if page.type == "edit" then %>autocomplete="off"<% end %> action="<%=controller%><%=page.action%>">
   <fieldset>
     <div class="cbi-value">
       <label class="cbi-value-title">Application Name:</label>

@@ -36,9 +36,9 @@ color:#FF6699;
 font-weight:bold;
 }
 
-#apps_form label { width:180px; }
+#maincontent .apps_form label { width:180px; }
 
-#apps_form .cbi-value-field { margin-left: 200px; }
+.apps_form .cbi-value-field { margin-left: 200px; }
 
 input, textarea, select, .uneditable-input { width: 500px; }
 
