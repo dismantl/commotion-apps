@@ -18,55 +18,61 @@ sleep 2
 # remove expired advertisements from UCI
 # if expired UCI entry has fingerprint/signature and localapp, rm /etc/avahi/services/<fingerprint>.service
 now=`date +%s`
-now_time=`date +%c -D %s -d "$now"`
+expiration_period=`uci get applications.settings.expiration`
+next_expire=`date +%c -D %s -d $(expr $(date +%s) + "$expiration_period")`
 apps=`cat /etc/config/applications |grep "^config application " |cut -c21- |sed -e s/\'$//`
 for app in $apps; do
 	app_expiration=`uci get applications.$app.expiration`
-	if [ -z "$app_expiration" ]; then
+	if [ -z "$app_expiration" -o "$app_expiration" == "0" ]; then
 		continue
 	fi
 	if [ `date +%s -D %c -d "$app_expiration"` -le "$now" ]; then
 		app_fingerprint=`uci get applications.$app.fingerprint`
 		localapp=`uci get applications.$app.localapp`
-		autorenew=`uci get applications.$app.autorenew`
-		if [ -n "$autorenew" -a "$autorenew" == 1 ]; then
+		#autorenew=`uci get applications.$app.autorenew`
+		#echo "autorenew $autorenew"
+		#if [ -n "$autorenew" -a "$autorenew" == 1 ]; then
 			# update expiration UCI field, then move on
-			uci set applications.$app.expiration="$now_time"
+			#uci set applications.$app.expiration="$next_expire"
+		#else
+			if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" == "1" ]; then
+				#remove avahi service file
+				rm /etc/avahi/services/$app_fingerprint.service
+			fi
+			# remove entry
+			uci delete applications.$app
 			continue
-		fi
-		if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" == "1" ]; then
-			#remove avahi service file
-			rm /etc/avahi/services/$app_fingerprint.service
-		fi
-		# remove entry
-		uci delete applications.$app
-		continue
+		#fi
 	fi
 	
 	# check connectivity
-	app_ipaddr=`uci get applications.$app.ipaddr |sed -e s/"^http:\/\/"/""/ |sed -e s/"^https:\/\/"/""/ |grep -E -o "^[^/]+"`
-	app_port=`uci get applications.$app.port`
-	if [ -z "$app_port" ]; then
-		app_port="80"
-	fi
-	nc -z -w 5 "$app_ipaddr" "$app_port"
-	# if connectivity, uci set applications.$app.noconnect="0"
-	if [ $? -eq 0 ]; then
-		uci set applications.$app.noconnect="0"
-	else
-		noconnect=`uci get applications.$app.noconnect`
-		if [ "$noconnect" == "2" ]; then
-			# remove UCI & service file
-			uci delete applications.$app
-			#app_fingerprint=`uci get applications.$app.fingerprint`
-			#localapp=`uci get applications.$app.localapp`
-			#if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" == "1" ]; then
-			#	rm /etc/avahi/services/$app_fingerprint.service
-			#fi
+	checkconnect=`uci get applications.settings.checkconnect`
+	app_synchronous=`uci get applications.$app.synchronous`
+	if [ "$checkconnect" == "1" -a "$app_synchronous" == "1" ]; then
+		app_ipaddr=`uci get applications.$app.ipaddr |sed -e s/"^http:\/\/"/""/ |sed -e s/"^https:\/\/"/""/ |grep -E -o "^[^/]+"`
+		app_port=`uci get applications.$app.port`
+		if [ -z "$app_port" ]; then
+			app_port="80"
+		fi
+		nc -z -w 5 "$app_ipaddr" "$app_port"
+		# if connectivity, uci set applications.$app.noconnect="0"
+		if [ $? -eq 0 ]; then
+			uci set applications.$app.noconnect="0"
 		else
-			# noconnect++
-			noconnect=`expr "$noconnect" + 1`
-			uci set applications.$app.noconnect="$noconnect"
+			noconnect=`uci get applications.$app.noconnect`
+			if [ "$noconnect" == "2" ]; then
+				app_fingerprint=`uci get applications.$app.fingerprint`
+				localapp=`uci get applications.$app.localapp`
+				# remove UCI & service file
+				uci delete applications.$app
+				if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" == "1" ]; then
+					rm /etc/avahi/services/$app_fingerprint.service
+				fi
+			else
+				# noconnect++
+				noconnect=`expr "$noconnect" + 1`
+				uci set applications.$app.noconnect="$noconnect"
+			fi
 		fi
 	fi
 done
@@ -99,6 +105,7 @@ while read -r service; do
 
 	# if service found in UCI, compare signatures. if sigs different, update app
 	match=''
+	apps=`cat /etc/config/applications |grep "^config application " |cut -c21- |sed -e s/\'$//`
 	for app in $apps; do
 		if [ $app == $fingerprint ]; then
 			if [ `uci get applications.$app.signature` == $signature ]; then
@@ -125,7 +132,8 @@ while read -r service; do
 	icon=`echo $txt |grep -o icon=[^\"]* |cut -c6- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g |sed -e s/'"'/"%22"/g`
 	description=`echo $txt |grep -o description=[^\"]* |cut -c13- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	types=`echo $txt |grep -o type=[^\"]* |cut -c6- |sed 's/ /$PLACEHOLDER/g' |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
-	expiration=`echo $txt |grep -o expiration=[^\"]* |cut -c12- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
+	expiration=`echo $txt |grep -o expiration=[^\"]* |cut -c12-`
+	synchronous=`echo $txt |grep -o synchronous=[^\"]* |cut -c13-`
 
 	##################### INPUT VALIDATION/SANITIZING ##########################
 	# HTML ENCODING: sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g
@@ -135,7 +143,7 @@ while read -r service; do
 	# is_port: if [ $? -eq 0 -a $test -ge 0 -a $test -le 65535 ]
 	# uci_encode: awk 'BEGIN{FS="";for(n=0;n<256;n++)ord[sprintf("%c",n)]=n}{for(i=1;i<=NF;i++)if(match($i,/[a-zA-Z0-9]/)){printf $i} else {printf "_"ord[$i]}}'
 	
-	if [ -z "$APPNAME" -o -z "$nick" -o -z "$icon" -o -z "$description" ]; then
+	if [ -z "$APPNAME" -o -z "$nick" -o -z "$icon" -o -z "$description" -o -z "$synchronous" ]; then
 		continue
 	fi
 	
@@ -150,7 +158,11 @@ while read -r service; do
 		port=""
 	fi
 	
-	if [ -n "$expiration" -a -z "`echo "$expiration" |grep -E "^[[:digit:]]+$"`" ]; then
+	if [ -n "$expiration" -a -z "`echo "$expiration" |grep -E "^[[:digit:]]+$"`" -a "$expiration" -gt 0 ]; then
+		continue
+	fi
+	
+	if [ "$synchronous" != "0" -a "$synchronous" != "1" ]; then
 		continue
 	fi
 	
@@ -182,10 +194,11 @@ while read -r service; do
 $app_types
 <txt-record>icon=$icon</txt-record>
 <txt-record>description=$description</txt-record>
-<txt-record>expiration=$expiration</txt-record>"
+<txt-record>expiration=$expiration</txt-record>
+<txt-record>synchronous=$synchronous</txt-record>"
 
 	echo "$sig_tmpl" |serval-verify -s $signature -i $fingerprint
-	if [ `echo $?` != '0' ]; then
+	if [ $? -ne 0 ]; then
 		echo "Service failed verification"
 		echo "$sig_tmpl"
 		continue
@@ -217,6 +230,7 @@ $app_types
 	if [ -n "$autoapprove" -a "$autoapprove" == "1" ]; then
 		uci set applications.$UUID.approved="1"
 	fi
+	uci set applications.$UUID.synchronous="$synchronous"
 	uci set applications.$UUID.noconnect="0"
 
 	# check if service is in applications.known_apps
@@ -229,7 +243,6 @@ $app_types
 	
 	# Adding service types with whitespace in them takes some extra work
 	uci delete applications.$UUID.type
-	echo "1"
 	uci set applications.$UUID.type="$PLACEHOLDER"
 	uci commit applications
 	typeList=""
@@ -237,10 +250,7 @@ $app_types
 		type=`echo -n $type |sed -e 's/$PLACEHOLDER/ /g'`
 		typeList="$typeList\n\tlist type '$type'"
 	done
-	echo "$typeList"
 	typeList=`echo "$typeList" |cut -c3- |sed -e s/"\&"/'\\\\\\\&'/`
-	echo "$PLACEHOLDER"
-	echo "$typeList"
 	#sed -i -e s/"\toption type '$PLACEHOLDER'"/"$typeList"/ /etc/config/applications
 	# this awk script will replace only the last occurance of $PLACEHOLDER, instead of sed which replaces all occurances
 	awk -v PLACEHOLDER="$PLACEHOLDER" -v typeList="$typeList" "/\toption type \x27$PLACEHOLDER\x27/"'{x=NR} {a[NR]=$0;}END{for(i=1;i<=NR;i++){if(i==x){gsub("\toption type \x27" PLACEHOLDER "\x27",typeList,a[i]);print a[i];}else{ print a[i];}}}' /etc/config/applications > /tmp/applications

@@ -63,20 +63,6 @@ function judge_app()
   end
 end
 
-function approve_app()                                                                                                                                                
-  local uci = luci.model.uci.cursor()                                                                                                                                   
-  local name = luci.http.formvalue("uuid")                                                                                                                              
-  if (uci:set("applications", name, "approved", "1") and 
-    uci:set("applications","known_apps","known_apps") and
-    uci:set("applications","known_apps",app_id,"approved") and
-    uci:save('applications') and 
-    uci:commit('applications')) then
-  	luci.http.status(200, "OK")
-  else 
-  	DIE("Could not approve app")
-  end
-end      
-
 function admin_load_apps()
 	load_apps({true})
 end
@@ -121,7 +107,7 @@ function add_app(error_info, bad_data)
 	local uci = luci.model.uci.cursor()
 	local type_tmpl = '<input type="checkbox" name="type" value="${type_escaped}" ${checked}/>${type}<br />'
 	local type_categories = uci:get_list("applications","settings","category")
-	local autorenew = uci:get("applications","settings","autorenew")
+	local allowpermanent = uci:get("applications","settings","allowpermanent")
 	local checkconnect = uci:get("applications","settings","checkconnect")
 	local types_string = ''
 	if (bad_data and bad_data.type) then
@@ -141,7 +127,7 @@ function add_app(error_info, bad_data)
 			types_string = types_string .. printf(type_tmpl, {type=type_category, type_escaped=html_encode(type_category), checked=""})
 		end
 	end
-	luci.template.render("commotion/apps_form", {types_string=types_string, err=error_info, app=bad_data, page={type="add", action="/apps/add_submit", autorenew=autorenew, checkconnect=checkconnect}})
+	luci.template.render("commotion/apps_form", {types_string=types_string, err=error_info, app=bad_data, page={type="add", action="/apps/add_submit", allowpermanent=allowpermanent, checkconnect=checkconnect}})
 end
 
 function admin_edit_app(error_info, bad_data)
@@ -149,7 +135,7 @@ function admin_edit_app(error_info, bad_data)
 	local uci = luci.model.uci.cursor()
 	local type_tmpl = '<input type="checkbox" name="type" value="${type_escaped}" ${checked}/>${type}<br />'
 	local type_categories = uci:get_list("applications","settings","category")
-	local autorenew = uci:get("applications","settings","autorenew")
+	local allowpermanent = uci:get("applications","settings","allowpermanent")
 	if (not bad_data) then
 		-- get app id from GET parameter
 		if (luci.http.formvalue("uuid") and luci.http.formvalue("uuid") ~= '') then
@@ -190,29 +176,44 @@ function admin_edit_app(error_info, bad_data)
 		end
 	end
 	
-	luci.template.render("commotion/apps_form", {types_string=types_string, app=app_data, err=error_info, page={type="edit", action="/admin/commotion/apps/edit_submit", autorenew=autorenew}})
+	luci.template.render("commotion/apps_form", {types_string=types_string, app=app_data, err=error_info, page={type="edit", action="/admin/commotion/apps/edit_submit", allowpermanent=allowpermanent}})
 end
 
-function admin_edit_settings(error_info, bad_expiration)
+function admin_edit_settings(error_info, bad_settings)
 	local expiration
 	local uci = luci.model.uci.cursor()
 	local types = uci:get_list("applications","settings","category")
-	if (bad_expiration) then
-		expiration = bad_expiration
+	local settings = {}
+	if (bad_settings) then
+		settings = bad_settings
 	else
-		expiration = uci:get("applications","settings","expiration")
+		settings.expiration = uci:get("applications","settings","expiration")
+		settings.autoapprove = uci:get("applications","settings","autoapprove")
+		settings.allowpermanent = uci:get("applications","settings","allowpermanent")
+		settings.checkconnect = uci:get("applications","settings","checkconnect")
 	end
-	luci.template.render("commotion/apps_settings", {types=types, expiration=expiration, err=error_info})
+	luci.template.render("commotion/apps_settings", {types=types, settings=settings, err=error_info})
 end
 
 function action_settings()
 	local uci = luci.model.uci.cursor()
 	local error_info = {}
-	if (not luci.http.formvalue("expiration") or luci.http.formvalue("expiration") == '' or not is_uint(luci.http.formvalue("expiration"))) then
+	local settings = {
+		autoapprove = luci.http.formvalue("autoapprove") or '0',
+		allowpermanent = luci.http.formvalue("allowpermanent") or '0',
+		checkconnect = luci.http.formvalue("checkconnect") or '0',
+	}
+	for i, val in pairs(settings) do
+		if (val ~= "1" and val ~= "0") then
+			DIE("Invalid form values")
+			return
+		end
+	end
+	settings.expiration = luci.http.formvalue("expiration")
+	if (not settings.expiration or settings.expiration == '' or not is_uint(settings.expiration) or tonumber(settings.expiration) <= 0) then
 		error_info.expiration = "Expiration value must be integer greater than zero"
 	end
 	if (not luci.http.formvalue("app_type") or luci.http.formvalue("app_type") == '') then
-		-- uci:delete('applications', "settings", "category") -- !!!!!!!!!!!!!!!! change this !!!!!!!!!!!!!!!!!!!!!!
 		error_info.app_type = "Must include at least one category"
 	else
 		for i, app_type in pairs(luci.http.formvalue("app_type")) do
@@ -225,11 +226,14 @@ function action_settings()
 	end
 	if (next(error_info)) then
 		error_info.notice = "Invalid entries. Please review the fields below."
-		admin_edit_settings(error_info,luci.http.formvalue("expiration"))
+		admin_edit_settings(error_info,settings)
 		return
 	else
 		uci:set_list("applications", "settings", "category", luci.http.formvalue("app_type"))
-		uci:set("applications","settings","expiration",luci.http.formvalue("expiration"))
+		for i, val in pairs(settings) do
+			--uci:set("applications","settings","expiration",luci.http.formvalue("expiration"))
+			uci:set("applications","settings",i,val)
+		end
 		uci:save("applications")
 		uci:commit("applications")
 		luci.http.redirect("../apps")
@@ -243,7 +247,9 @@ function action_add(edit_app)
 	local bad_data = {}
 	local error_info = {}
 	local expiration = uci:get("applications","settings","expiration")
-	local autorenew = uci:get("applications","settings","autorenew")
+	local allowpermanent = uci:get("applications","settings","allowpermanent")
+	local autoapprove = uci:get("applications","settings","autoapprove")
+	local checkconnect = uci:get("applications","settings","checkconnect")
 	
 	values = {
 		  name =  luci.http.formvalue("name"),
@@ -254,8 +260,9 @@ function action_add(edit_app)
 		  description =  luci.http.formvalue("description"),
 		  ttl = luci.http.formvalue("ttl"),
 		  transport = luci.http.formvalue("transport"),
-		  autorenew = luci.http.formvalue("autorenew"),
-		  checkconnect = luci.http.formvalue("checkconnect"),
+		  --permanent = luci.http.formvalue("permanent"),
+		  synchronous = luci.http.formvalue("synchronous"),
+		  noconnect = '0',
 		  protocol = 'IPv4',
 		  localapp = '1' -- all manually created apps get a 'localapp' flag
 	}
@@ -285,13 +292,13 @@ function action_add(edit_app)
 		values.approved = luci.http.formvalue("approved")
 	end
 	
-	if (values.autorenew and (values.autorenew ~= '1' or autorenew == '0')) then
-		DIE("Invalid autorenew value")
+	if (luci.http.formvalue("permanent") and (luci.http.formvalue("permanent") ~= '1' or allowpermanent == '0')) then
+		DIE("Invalid permanent value")
 		return
 	end
 	
-	if (values.checkconnect and values.checkconnect ~= "1") then
-		DIE("Invalid checkconnect value")
+	if (values.synchronous and values.synchronous ~= "1") then
+		DIE("Invalid synchronous value")
 		return
 	end
 	
@@ -324,7 +331,7 @@ function action_add(edit_app)
 	end
 	
 	-- Check service for connectivity, if requested
-	if (values.checkconnect and values.checkconnect == "1") then
+	if (values.synchronous and values.synchronous == "1" and checkconnect == "1") then
 		if (values.ipaddr ~= '' and not is_ip4addr(values.ipaddr)) then
 			url = string.gsub(values.ipaddr, 'http://', '', 1)
 			url = url:gsub('https://', '', 1)
@@ -373,9 +380,23 @@ function action_add(edit_app)
 	end
 	
 	
+	if (autoapprove == "1" and not values.approved) then
+		values.approved = "1"
+	end
+	if ((allowpermanent == '1' and luci.http.formvalue("permanent") == nil) or allowpermanent == '0') then
+		--values.permanent = '0'
+		values.expiration = os.date("%c",os.time() + expiration) -- Add expiration time
+	elseif (allowpermanent == '1' and luci.http.formvalue("permanent") and luci.http.formvalue("permanent") == '1') then
+		values.expiration = '0'
+	end
+	if (values.synchronous == nil) then
+		values.synchronous = '0'
+	end
+	if (values.ttl == '') then values.ttl = '0' end
+	
 	-- Update application
 	if (luci.http.formvalue("uuid") and edit_app) then 
-		if (luci.http.formvalue("uuid") ~= uci_encode(values.ipaddr .. values.port)) then
+		if ((luci.http.formvalue("uuid") ~= uci_encode(values.ipaddr .. values.port)) or (luci.http.formvalue("fingerprint") and values.ttl == '0')) then
 			if (luci.http.formvalue("fingerprint")) then
 	   			if (not uci:delete("applications",luci.http.formvalue("fingerprint"))) then
 					DIE("Unable to remove old UCI entry")
@@ -396,17 +417,6 @@ function action_add(edit_app)
 		end
 	end
 	
-	-- Add expiration time
-	values.expiration = os.date("%c",os.time() + expiration)
-	
-	if (autorenew == '1' and values.autorenew == nil) then
-		values.autorenew = '0'
-	end
-	if (values.checkconnect == nil) then
-		values.checkconnect = '0'
-	end
-	if (values.ttl == '') then values.ttl = '0' end
-	
 	-- #################################################################
 	-- #    If TTL > 0, create and sign Avahi service advertisement    #
 	-- #################################################################
@@ -423,7 +433,8 @@ function action_add(edit_app)
 ${app_types}
 <txt-record>icon=${icon}</txt-record>
 <txt-record>description=${description}</txt-record>
-<txt-record>expiration=${expiration}</txt-record>]]
+<txt-record>expiration=${expiration}</txt-record>
+<txt-record>synchronous=${synchronous}</txt-record>]]
 		tmpl = [[
 <?xml version="1.0" standalone='no'?><!--*-nxml-*-->
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
@@ -542,6 +553,11 @@ ${app_types}
 		end
 	end -- if (luci.http.formvalue("ttl") > 0)
 	    
+	-- Commit everthing to UCI
+	if (values.approved == "1" or values.approved == "0") then
+		uci:set("applications", "known_apps", "known_apps")
+		uci:set("applications", "known_apps", values.fingerprint and values.fingerprint or values.uuid, (values.approved == "1") and "approved" or "blacklisted")
+	end
 	uci:section('applications', 'application', UUID, values)
 	if (luci.http.formvalue("type") ~= nil) then
 		uci:set_list('applications', UUID, "type", luci.http.formvalue("type"))

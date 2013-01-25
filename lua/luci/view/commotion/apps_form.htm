@@ -58,13 +58,13 @@
     <% if page.type == "edit" then %>
       <div class="cbi-value">
         <label class="cbi-value-title">Approved:</label>
-	<div class="cbi-value-field">                                                                                                                                     
-          <select size="1" name="approved" class="cbi-input-select">                                                                                                     
+	<div class="cbi-value-field">
+          <select size="1" name="approved" class="cbi-input-select">
           <option value=""></option>
           <option value="1"<% if (app.approved == "1") then %> selected<% end %>>approved</option>
-          <option value="0"<% if (app.approved == "0") then %> selected<% end %>>blacklisted</option>                                                                      
+          <option value="0"<% if (app.approved == "0") then %> selected<% end %>>blacklisted</option>
           </select>
-        </div>                                                                                                                                                            
+        </div>
       </div>
     <% end %>
     </fieldset>
@@ -79,33 +79,33 @@
         </div>
       </div>
       <div class="cbi-value">                                                                                                                                             
-        <label class="cbi-value-title">Number of hops away this service should be seen (Optional):</label>                                                                                                   
-        <div class="cbi-value-field">                                                                                                                                     
-          <input type="text" name="ttl" <% if app then %>value="<%=app.ttl%>"<% end %>/>    
+        <label class="cbi-value-title">Number of hops away this service should be seen (Optional):</label>
+        <div class="cbi-value-field">
+          <input type="text" name="ttl" <% if app then %>value="<%=app.ttl%>"<% end %>/>
           <%if err then%><div class="error"><%=err.ttl%></div><%end%>
-        </div>                                                                                                                                                            
-      </div> 
-      <div class="cbi-value">                                                                                                                                             
-        <label class="cbi-value-title">Transport type (Optional):</label>                                                                                                  
-        <div class="cbi-value-field">                                                                                                                                     
-          <select size="1" name="transport" class="cbi-input-select">                                                                                                     
-          <option value=""></option>
-          <option value="tcp" <% if app and app.transport == "tcp" then %>selected<% end %>>tcp</option>
-          <option value="udp" <% if app and app.transport == "udp" then %>selected<% end %>>udp</option>                                                                      
-          </select>
-        </div>                                                                                                                                                            
+        </div>
       </div>
       <div class="cbi-value">
-        <label class="cbi-value-title">Automatically check service for connectivity?</label>
+        <label class="cbi-value-title">Transport type (Optional):</label>
         <div class="cbi-value-field">
-          <input type="checkbox" name="checkconnect" value="1" <% if ((app and app.checkconnect == "1") or (not app and page.checkconnect == "1")) then %>checked<% end %>/>
+          <select size="1" name="transport" class="cbi-input-select">
+          <option value=""></option>
+          <option value="tcp" <% if app and app.transport == "tcp" then %>selected<% end %>>tcp</option>
+          <option value="udp" <% if app and app.transport == "udp" then %>selected<% end %>>udp</option>
+          </select>
+        </div>
+      </div>
+      <div class="cbi-value">
+        <label class="cbi-value-title">Is this application synchronous?</label>
+        <div class="cbi-value-field">
+          <input type="checkbox" name="synchronous" value="1" <% if ((app and app.synchronous == "1") or not app) then %>checked<% end %>/>
 	</div>
       </div>
-      <% if page.autorenew == "1" then %>
+      <% if page.allowpermanent == "1" then %>
       <div class="cbi-value">
         <label class="cbi-value-title">Is this application permanent?</label>
         <div class="cbi-value-field">
-          <input type="checkbox" name="autorenew" value="1" <% if app and app.autorenew == "1" then %>checked<% end %>/>
+          <input type="checkbox" name="permanent" value="1" <% if app and app.permanent == "1" then %>checked<% end %>/>
 	</div>
       </div>
       <% end %>
