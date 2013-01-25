@@ -27,34 +27,53 @@ require "commotion_helpers"
 function index()
     entry({"apps"}, call("load_apps"), "Local Applications", 20).dependent=true
     entry({"admin","commotion","apps"}, call("admin_load_apps"), "Local Applications", 50).dependent=true
-    entry({"admin", "commotion", "apps", "list"}, cbi("commotion/apps_cbi")).dependent=true
+    --entry({"admin", "commotion", "apps", "list"}, cbi("commotion/apps_cbi")).dependent=true
     entry({"apps", "add"}, call("add_app")).dependent=true
     entry({"apps", "add_submit"}, call("action_add")).dependent=true
     entry({"admin", "commotion", "apps", "edit"}, call("admin_edit_app")).dependent=true
     entry({"admin", "commotion", "apps", "edit_submit"}, call("action_edit")).dependent=true
     entry({"admin", "commotion", "apps", "settings"}, call("admin_edit_settings")).dependent=true
     entry({"admin", "commotion", "apps", "settings_submit"}, call("action_settings")).dependent=true
-    entry({"admin", "commotion", "apps", "blacklist"}, call("blacklist_app")).dependent=true
-    entry({"admin", "commotion", "apps", "approve"}, call("approve_app")).dependent=true
+    entry({"admin", "commotion", "apps", "judge"}, call("judge_app")).dependent=true
 end
 
-function blacklist_app()
+function judge_app()
+  local action, app_id
   local uci = luci.model.uci.cursor()
-  local name = luci.http.formvalue("name")
-  if (uci:set("applications", name, "approved", "0") and uci:save('applications') and uci:commit('applications')) then
+  local uuid = luci.http.formvalue("uuid")
+  local approved = luci.http.formvalue("approved")
+  uci:foreach("applications", "application",
+	function(app)
+  		if (uuid == app.uuid) then
+	  		app_id = app['.name']
+  		end
+  	end)
+  if (not app_id) then
+	  DIE("Application not found")
+	  return
+  end
+  if (uci:set("applications", app_id, "approved", approved) and 
+    uci:set("applications", "known_apps", "known_apps") and
+    uci:set("applications", "known_apps", app_id, (approved == "1") and "approved" or "blacklisted") and
+    uci:save('applications') and 
+    uci:commit('applications')) then
   	luci.http.status(200, "OK")
   else
-  	luci.http.status(500, "Internal Server Error")
+  	DIE("Could not judge app")
   end
 end
 
 function approve_app()                                                                                                                                                
   local uci = luci.model.uci.cursor()                                                                                                                                   
-  local name = luci.http.formvalue("name")                                                                                                                              
-  if (uci:set("applications", name, "approved", "1") and uci:save('applications') and uci:commit('applications')) then
+  local name = luci.http.formvalue("uuid")                                                                                                                              
+  if (uci:set("applications", name, "approved", "1") and 
+    uci:set("applications","known_apps","known_apps") and
+    uci:set("applications","known_apps",app_id,"approved") and
+    uci:save('applications') and 
+    uci:commit('applications')) then
   	luci.http.status(200, "OK")
   else 
-  	luci.http.status(500, "Internal Server Error")
+  	DIE("Could not approve app")
   end
 end      
 
@@ -102,6 +121,8 @@ function add_app(error_info, bad_data)
 	local uci = luci.model.uci.cursor()
 	local type_tmpl = '<input type="checkbox" name="type" value="${type_escaped}" ${checked}/>${type}<br />'
 	local type_categories = uci:get_list("applications","settings","category")
+	local autorenew = uci:get("applications","settings","autorenew")
+	local checkconnect = uci:get("applications","settings","checkconnect")
 	local types_string = ''
 	if (bad_data and bad_data.type) then
 		for i, type_category in pairs(type_categories) do
@@ -120,7 +141,7 @@ function add_app(error_info, bad_data)
 			types_string = types_string .. printf(type_tmpl, {type=type_category, type_escaped=html_encode(type_category), checked=""})
 		end
 	end
-	luci.template.render("commotion/apps_form", {types_string=types_string, err=error_info, app=bad_data, page={type="add", action="/apps/add_submit"}})
+	luci.template.render("commotion/apps_form", {types_string=types_string, err=error_info, app=bad_data, page={type="add", action="/apps/add_submit", autorenew=autorenew, checkconnect=checkconnect}})
 end
 
 function admin_edit_app(error_info, bad_data)
@@ -128,7 +149,7 @@ function admin_edit_app(error_info, bad_data)
 	local uci = luci.model.uci.cursor()
 	local type_tmpl = '<input type="checkbox" name="type" value="${type_escaped}" ${checked}/>${type}<br />'
 	local type_categories = uci:get_list("applications","settings","category")
-	
+	local autorenew = uci:get("applications","settings","autorenew")
 	if (not bad_data) then
 		-- get app id from GET parameter
 		if (luci.http.formvalue("uuid") and luci.http.formvalue("uuid") ~= '') then
@@ -151,9 +172,8 @@ function admin_edit_app(error_info, bad_data)
 		end
 	else
 		UUID = bad_data.uuid
-		app_data =  bad_data
+		app_data = bad_data
 	end
-	
 	
 	types_string = ''
 	for i, type_category in pairs(type_categories) do
@@ -170,7 +190,7 @@ function admin_edit_app(error_info, bad_data)
 		end
 	end
 	
-	luci.template.render("commotion/apps_form", {types_string=types_string, app=app_data, err=error_info, page={type="edit", action="/admin/commotion/apps/edit_submit"}})
+	luci.template.render("commotion/apps_form", {types_string=types_string, app=app_data, err=error_info, page={type="edit", action="/admin/commotion/apps/edit_submit", autorenew=autorenew}})
 end
 
 function admin_edit_settings(error_info, bad_expiration)
@@ -218,11 +238,12 @@ end
 
 function action_add(edit_app)
 	
-	local UUID, values, tmpl, type_tmpl, service_type, app_types, reverse_app_types, service_string, service_file, signing_tmpl, signing_msg, resp, signature, fingerprint, deleted_uci
+	local UUID, values, tmpl, type_tmpl, service_type, app_types, reverse_app_types, service_string, service_file, signing_tmpl, signing_msg, resp, signature, fingerprint, deleted_uci, url
 	local uci = luci.model.uci.cursor()
 	local bad_data = {}
 	local error_info = {}
 	local expiration = uci:get("applications","settings","expiration")
+	local autorenew = uci:get("applications","settings","autorenew")
 	
 	values = {
 		  name =  luci.http.formvalue("name"),
@@ -233,6 +254,8 @@ function action_add(edit_app)
 		  description =  luci.http.formvalue("description"),
 		  ttl = luci.http.formvalue("ttl"),
 		  transport = luci.http.formvalue("transport"),
+		  autorenew = luci.http.formvalue("autorenew"),
+		  checkconnect = luci.http.formvalue("checkconnect"),
 		  protocol = 'IPv4',
 		  localapp = '1' -- all manually created apps get a 'localapp' flag
 	}
@@ -262,6 +285,16 @@ function action_add(edit_app)
 		values.approved = luci.http.formvalue("approved")
 	end
 	
+	if (values.autorenew and (values.autorenew ~= '1' or autorenew == '0')) then
+		DIE("Invalid autorenew value")
+		return
+	end
+	
+	if (values.checkconnect and values.checkconnect ~= "1") then
+		DIE("Invalid checkconnect value")
+		return
+	end
+	
 	-- escape input strings
 	for i, field in pairs(values) do
 		if (i ~= 'ipaddr' and i ~= 'icon') then
@@ -274,8 +307,15 @@ function action_add(edit_app)
 	-- make sure application types are within the set of approved categories on node
 	if (luci.http.formvalue("type")) then
 		app_types = uci:get_list("applications","settings","category")
-		for i, type in pairs(luci.http.formvalue("type")) do
-			if (not table.contains(app_types, type)) then
+		if (type(luci.http.formvalue("type")) == "table") then
+			for i, type in pairs(luci.http.formvalue("type")) do
+				if (not table.contains(app_types, type)) then
+					DIE("Invalid application type value")
+					return
+				end
+			end
+		else
+			if (not table.contains(app_types, luci.http.formvalue("type"))) then
 				DIE("Invalid application type value")
 				return
 			end
@@ -283,18 +323,22 @@ function action_add(edit_app)
 		values.type = luci.http.formvalue("type")
 	end
 	
-	-- IF USER INPUTS URL INTO luci.http.formvalue("ipaddr") FIELD, NEED TO BE ABLE TO RESOLVE TO IP ADDRESS BEFORE ADDING APPLICATION
-	if (luci.http.formvalue("ipaddr") ~= '' and not is_ip4addr(luci.http.formvalue("ipaddr"))) then
-		local url = string.gsub(luci.http.formvalue("ipaddr"), 'http://', '', 1)
-		url = url:gsub('https://', '', 1)
-		url = url:match("^[^/]+") -- remove anything after the domain name
-		-- url = url:match("[%a%d-]+\.%w+$") -- remove subdomains (** actually we should probably keep subdomains **)
-		local resolve = luci.sys.exec("nslookup " .. url .. "; echo $?")
-		if (resolve:sub(-2,-2) ~= '0') then  -- exit status != 0 -> failed to resolve url
-			error_info.ipaddr = "Invalid URL: Failed to resolve given URL to an IP address"
+	-- Check service for connectivity, if requested
+	if (values.checkconnect and values.checkconnect == "1") then
+		if (values.ipaddr ~= '' and not is_ip4addr(values.ipaddr)) then
+			url = string.gsub(values.ipaddr, 'http://', '', 1)
+			url = url:gsub('https://', '', 1)
+			url = url:match("^[^/]+") -- remove anything after the domain name
+			-- url = url:match("[%a%d-]+\.%w+$") -- remove subdomains (** actually we should probably keep subdomains **)
+		else
+			url = values.ipaddr
+		end
+		local connect = luci.sys.exec("nc -z -w 5 \"" .. url .. '" "' .. ((values.port and values.port ~= "") and values.port or "80") .. '"; echo $?')
+		if (connect:sub(-2,-2) ~= '0') then  -- exit status != 0 -> failed to resolve url
+			error_info.ipaddr = "Failed to resolve URL or connect to host"
 		end
 	end
-	
+		
 	-- if invalid input was found, set error notice at top of page
 	if (next(error_info)) then error_info.notice = "Invalid entries. Please review the fields below." end
 	
@@ -355,6 +399,12 @@ function action_add(edit_app)
 	-- Add expiration time
 	values.expiration = os.date("%c",os.time() + expiration)
 	
+	if (autorenew == '1' and values.autorenew == nil) then
+		values.autorenew = '0'
+	end
+	if (values.checkconnect == nil) then
+		values.checkconnect = '0'
+	end
 	if (values.ttl == '') then values.ttl = '0' end
 	
 	-- #################################################################

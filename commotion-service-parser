@@ -15,6 +15,63 @@ fi
 kill -s USR1 `pgrep avahi-client`
 sleep 2
 
+# remove expired advertisements from UCI
+# if expired UCI entry has fingerprint/signature and localapp, rm /etc/avahi/services/<fingerprint>.service
+now=`date +%s`
+now_time=`date +%c -D %s -d "$now"`
+apps=`cat /etc/config/applications |grep "^config application " |cut -c21- |sed -e s/\'$//`
+for app in $apps; do
+	app_expiration=`uci get applications.$app.expiration`
+	if [ -z "$app_expiration" ]; then
+		continue
+	fi
+	if [ `date +%s -D %c -d "$app_expiration"` -le "$now" ]; then
+		app_fingerprint=`uci get applications.$app.fingerprint`
+		localapp=`uci get applications.$app.localapp`
+		autorenew=`uci get applications.$app.autorenew`
+		if [ -n "$autorenew" -a "$autorenew" == 1 ]; then
+			# update expiration UCI field, then move on
+			uci set applications.$app.expiration="$now_time"
+			continue
+		fi
+		if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" == "1" ]; then
+			#remove avahi service file
+			rm /etc/avahi/services/$app_fingerprint.service
+		fi
+		# remove entry
+		uci delete applications.$app
+		continue
+	fi
+	
+	# check connectivity
+	app_ipaddr=`uci get applications.$app.ipaddr |sed -e s/"^http:\/\/"/""/ |sed -e s/"^https:\/\/"/""/ |grep -E -o "^[^/]+"`
+	app_port=`uci get applications.$app.port`
+	if [ -z "$app_port" ]; then
+		app_port="80"
+	fi
+	nc -z -w 5 "$app_ipaddr" "$app_port"
+	# if connectivity, uci set applications.$app.noconnect="0"
+	if [ $? -eq 0 ]; then
+		uci set applications.$app.noconnect="0"
+	else
+		noconnect=`uci get applications.$app.noconnect`
+		if [ "$noconnect" == "2" ]; then
+			# remove UCI & service file
+			uci delete applications.$app
+			#app_fingerprint=`uci get applications.$app.fingerprint`
+			#localapp=`uci get applications.$app.localapp`
+			#if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" == "1" ]; then
+			#	rm /etc/avahi/services/$app_fingerprint.service
+			#fi
+		else
+			# noconnect++
+			noconnect=`expr "$noconnect" + 1`
+			uci set applications.$app.noconnect="$noconnect"
+		fi
+	fi
+done
+uci commit applications
+
 while read -r service; do
 	#parse $service
 	#format:
@@ -42,7 +99,6 @@ while read -r service; do
 
 	# if service found in UCI, compare signatures. if sigs different, update app
 	match=''
-	apps=`cat /etc/config/applications |grep "^config application " |cut -c21- |sed -e s/\'$//`
 	for app in $apps; do
 		if [ $app == $fingerprint ]; then
 			if [ `uci get applications.$app.signature` == $signature ]; then
@@ -98,6 +154,18 @@ while read -r service; do
 		continue
 	fi
 	
+	# check connectivity
+	app_port="$port"
+	app_ipaddr=`echo "$ipaddr" |sed -e s/"^http:\/\/"/""/ |sed -e s/"^https:\/\/"/""/ |grep -E -o "^[^/]+"`
+	if [ -z "$app_port" ]; then
+		app_port="80"
+	fi
+	nc -z -w 5 "$app_ipaddr" "$app_port"
+	if [ $? -ne 0 ]; then
+		echo "Could not connect to service $app_ipaddr on $app_port"
+		continue
+	fi
+	
 	##################### VERIFY SIGNATURE ##########################
 	app_types=''
 	for type in $types; do
@@ -145,8 +213,20 @@ $app_types
 		expiration_time=`date +%c -D %s -d $(( $(date +%s) +$expiration ))`
 		uci set applications.$UUID.expiration="$expiration_time"
 	fi
+	autoapprove=`uci get applications.settings.autoapprove`
+	if [ -n "$autoapprove" -a "$autoapprove" == "1" ]; then
+		uci set applications.$UUID.approved="1"
+	fi
+	uci set applications.$UUID.noconnect="0"
 
-	echo "about to set /etc/config/applications"
+	# check if service is in applications.known_apps
+	found=`uci get applications.known_apps.$fingerprint`
+	if [ -n "$found" -a "$found" == "approved" ]; then
+		uci set applications.$UUID.approved="1"
+	elif [ -n "$found" -a "$found" == "blacklisted" ]; then
+		uci set applications.$UUID.approved="0"
+	fi
+	
 	# Adding service types with whitespace in them takes some extra work
 	uci delete applications.$UUID.type
 	echo "1"
@@ -167,26 +247,5 @@ $app_types
 	cp /tmp/applications /etc/config/applications
 
 done < "/tmp/avahi-client.out"
-
-# remove expired advertisements from UCI
-# if expired UCI entry has fingerprint/signature and localapp, rm /etc/avahi/services/<fingerprint>.service
-now=`date +%s`
-for app in $apps; do
-	app_expiration=`uci get applications.$app.expiration`
-	if [ -z "$app_expiration" ]; then
-		continue
-	fi
-	if [ `date +%s -D %c -d "$app_expiration"` -le "$now" ]; then
-		app_fingerprint=`uci get applications.$app.fingerprint`
-		localapp=`uci get applications.$app.localapp`
-		if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" -eq 1 ]; then
-			#remove avahi service file
-			rm /etc/avahi/services/$app_fingerprint.service
-		fi
-		# remove entry
-		uci delete applications.$app
-	fi
-done
-uci commit applications
 
 exit

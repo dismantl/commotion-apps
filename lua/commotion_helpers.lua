@@ -1,7 +1,7 @@
 function DIE(str)
 	luci.http.status(500, "Internal Server Error")
+	luci.http.write(str)
 	luci.http.close()
-	luci.sys.call("echo \"" .. str .. '"')
 end
 
 function uci_encode(str)

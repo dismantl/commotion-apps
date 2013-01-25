@@ -1,23 +1,42 @@
 <%+header%>
+
 <script type="text/javascript" src="<%=media%>/apps.js"></script>
 <link rel="stylesheet" type="text/css" href="<%=media%>/apps.css" />
 
 <h2><a id="content" name="content">Applications</a></h2>
 <div class="cbi-map-descr">Here you can view applications accessible from this node.</div>
-<%-
- if (admin_vars) then
- 	-%> <script type="text/javascript" src="<%=media%>/admin_apps.js"></script> <%-
- 	include ("commotion/apps_admin")
- else
- 	-%>  <div class="div-bar"></div> <%-
- 	include ("commotion/apps_display")  -%>
+<div class="cbi-map">
+<ul id="tabs" class="cbi-tabmenu">
+	<% if admin_vars then %>
+	<li class="cbi-tab active">
+		<a id="new_apps" href="javascript:void(0);" onclick="filter_apps('new');">New Apps</a>
+	</li>
+	<li class="cbi-tab-disabled">
+		<a id="approved_apps" href="javascript:void(0);" onclick="filter_apps('approved')">Approved Apps</a>
+	</li>
+	<li class="cbi-tab-disabled">
+		<a id="blacklisted_apps" href="javascript:void(0);" onclick="filter_apps('blacklisted')">Blacklisted Apps</a>
+	</li>
+	<li class="cbi-tab-disabled" style="float:right">
+		<a id="edit_categories" href="apps/settings">Settings</a>
+	</li>
+	<% end %>
+	<li class="cbi-tab-disabled" style="float:right">
+		<a id="add_app" href="<%=controller%>/apps/add">Add Application</a>
+	</li>
+</ul>
+ <% include ("commotion/apps_display") %>
+ 
+ <% if admin_vars then %>
+   <script type="text/javascript" src="<%=media%>/admin_apps.js"></script>
+ <% else %>
  <script type="text/javascript">
    var types = document.getElementById('types').children;
    for (var i=0;i < types.length;i++) {
      types[i].style.display = "block";
    }
  </script>
- 
-<%end%>
+ <% end %>
+</div>
 
 <%+footer%>
