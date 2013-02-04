@@ -21,6 +21,7 @@
 			else
 	           		approved = "new"
 			end
+			this_app.hashtag = '#' .. this_app.name:gsub(" ","_"):gsub("[^%w_]",""):match("%a+[%w_]+%a")
     -%>
 			<% include("themes/" .. theme .. "/apps_apps") %>
 		<%end%>

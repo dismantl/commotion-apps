@@ -113,8 +113,12 @@ function add_app(error_info, bad_data)
 	if (bad_data and bad_data.type) then
 		for i, type_category in pairs(type_categories) do
 			local match = nil
-			for i, app_type in pairs(bad_data.type) do
-				if (app_type == type_category) then match=true end
+			if (type(bad_data.type) == "table") then
+				for i, app_type in pairs(bad_data.type) do
+					if (app_type == type_category) then match=true end
+				end
+			else
+				if (type_category == bad_data.type) then match=true end
 			end
 			if (match) then
 				types_string = types_string .. printf(type_tmpl, {type=type_category, type_escaped=html_encode(type_category), checked="checked "})
@@ -349,19 +353,24 @@ function action_add(edit_app)
 	-- if invalid input was found, set error notice at top of page
 	if (next(error_info)) then error_info.notice = "Invalid entries. Please review the fields below." end
 	
-	if (not edit_app) then -- if not updating application, check for identical applications already on node
-		UUID = uci_encode(values.ipaddr .. values.port)
-		values.uuid = UUID
+	if (not edit_app) then -- if not updating application, check for too many applications or identical applications already on node
+		local count = luci.sys.exec("cat /etc/config/applications |grep -c \"^config application \"")
+		if (count and count ~= '' and tonumber(count) >= 100) then
+			error_info.notice = "This node cannot support any more applications at this time. Please contact the node administrator or try again later."
+		else
+			UUID = uci_encode(values.ipaddr .. values.port)
+			values.uuid = UUID
 		
-		uci:foreach("applications", "application", 
-		function(app)
-			if (UUID == app.uuid or values.name == app.name) then
-				match = true
+			uci:foreach("applications", "application", 
+			function(app)
+				if (UUID == app.uuid or values.name == app.name) then
+					match = true
+				end
+			end)
+		
+			if (match) then
+				error_info.notice = "An application with this name or address already exists"
 			end
-		end)
-		
-		if (match) then
-			error_info.notice = "An application with this name or address already exists"
 		end
 	else
 		values.uuid = luci.http.formvalue("uuid")

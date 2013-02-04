@@ -1,13 +1,12 @@
 .apps {
 display:none;
-outline-width:2px;
-outline-color:#ff6699;
-outline-style:dashed;
+border:2px dashed #ff6699;
 margin-top:8px;
 }
 
 .app {
 padding:10px;
+height:85px;
 }
 
 .app img {
@@ -45,6 +44,22 @@ width:180px;
 text-align:right;
 }
 
+.name h4 { display:inline-block; color:#000000; }
+.app-tooltip { 
+	display:none; 
+	background:#ffffff; 
+	border: 1px #DDDDDD solid;
+	box-shadow: 2px 2px 8px #dddddd;
+	padding:10px;
+	bottom:9px;
+	left:20px;
+}
+.app-info { height:18px; position:relative; display:inline-block; }
+.info-button { position:absolute; top:0; left:0; }
+.app-info:hover .app-tooltip { display:block; position:absolute; }
+
+.signature, .colorprint { font-family: "Courier New"; font-weight:bold; font-size: 14px; }
+
 input, textarea, select, .uneditable-input { width: 500px; }
 
 button.approve { background: url("check.png") no-repeat left center; }
@@ -62,4 +77,9 @@ padding-left:40px;
 button:hover, a:hover {
 color:#66CCFF !important;
 text-decoration:underline;
+}
+
+.cbi-value-description {
+  color:blue;
+  display:block;
 }

@@ -1,6 +1,24 @@
 <div class="app <%=this_app.uuid%> <%=approved%>">
 	<img src="<%=this_app.icon%>"  align="Left" width="85" height="85">
-	<h4><a href="<%=this_app.ipaddr%><% if this_app.port then %>:<%=this_app.port%><% end %>"><%=this_app.name%></a></h4>
+	<div class="name">
+	<h4><a href="<% if is_ip4addr(this_app.ipaddr) then %>http://<% end %><%=this_app.ipaddr%><% if this_app.port then %>:<%=this_app.port%><% end %>"><%=this_app.name%></a></h4>
+	<div class="app-info">
+	  <img class="info-button" src="<%=media%>/question.png" />
+	  <div class="app-tooltip">
+	    <div class="hashtag"><h3><%=this_app.hashtag%></h3></div>
+	    <% if this_app.fingerprint then %>
+	    <div class="app_id"><h4>Fingerprint:</h4>
+  	      <div class="signature"><%=this_app.fingerprint%></div>
+	      <div class="fingerpainting">
+  	        <%- for color in this_app.fingerprint:gmatch(".....?.?") do
+	    	    if color:len() == 4 then color = color .. "FF" end -%>
+	    	    <span class="colorprint" style="background:#<%=color%>">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><% end %>
+	      </div>
+	    </div>
+	    <% end %>
+	  </div>
+	</div>
+	</div>
 	<p><%=this_app.description%></p>
 	<% if (admin_vars) then %>
 	  <button class="approve" onclick="return JudgeApp('<%=this_app.uuid%>',1)">Approve</button>

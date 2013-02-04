@@ -19,6 +19,7 @@
       <div class="cbi-value-field">
   	<input type="text"  name="name" <% if app then %>value="<%=app.name%>"<% end %>/>
   	<%if err then%><div class="error"><%=err.name%></div><%end%>
+  	<div class="cbi-value-description">This is how your application will be known and displayed.</div>
       </div>
     </div>
     <div class="cbi-value">
@@ -26,6 +27,7 @@
       <div class="cbi-value-field">
     	<input type="text"  name="nick" <% if app then %>value="<%=app.nick%>"<% end %>/>
     	<%if err then%><div class="error"><%=err.nick%></div><%end%>
+    	<div class="cbi-value-description">Your application's nickname will be used as a tagline when it is displayed.</div>
       </div>
     </div>
     <div class="cbi-value">
@@ -33,19 +35,22 @@
       <div class="cbi-value-field">
         <textarea rows="5"  name="description"><% if app then %><%=app.description%><% end %></textarea>
         <%if err then%><div class="error"><%=err.description%></div><%end%>
+        <div class="cbi-value-description">The description should include a one paragraph summary of the application and any other relevant information.</div>
       </div>
     </div>
     <div class="cbi-value">
-      <label class="cbi-value-title">IP Address or URL of Service:</label>
+      <label class="cbi-value-title" data-tip="For non web-apps, this should point to an information page telling the user how to connect to the application.">IP Address or URL of Service:</label>
       <div class="cbi-value-field">
    	<input type="text"  name="ipaddr" <% if app then %>value="<%=app.ipaddr%>"<% end %>/>
    	<%if err then%><div class="error"><%=err.ipaddr%></div><%end%>
+   	<div class="cbi-value-description">An IP address or URL where the application can be reached.</div>
       </div>
     </div>
     <div class="cbi-value">
       <label class="cbi-value-title">Type of Application:</label>
       <div class="cbi-value-field">
   	<%=types_string%>
+  	<div class="cbi-value-description">Choose any relevant categories that describe your application.</div>
       </div>
     </div>
     <div class="cbi-value">
@@ -53,6 +58,7 @@
       <div class="cbi-value-field">
   	<input type="text" name="icon" <% if app then %>value="<%=app.icon%>"<% end %>/>
   	<%if err then%><div class="error"><%=err.icon%></div><%end%>
+  	<div class="cbi-value-description">This should be a URL of an image file that will be displayed next to the listing of your application.</div>
       </div>
     </div>
     <% if page.type == "edit" then %>
@@ -64,6 +70,7 @@
           <option value="1"<% if (app.approved == "1") then %> selected<% end %>>approved</option>
           <option value="0"<% if (app.approved == "0") then %> selected<% end %>>blacklisted</option>
           </select>
+          <div class="cbi-value-description">Approved applications are shown to users, while blacklisted applications are not.</div>
         </div>
       </div>
     <% end %>
@@ -72,17 +79,19 @@
     <fieldset>
     <div id="advanced_options">
       <div class="cbi-value">
-        <label class="cbi-value-title">Port of Service (Optional):</label>
+        <label class="cbi-value-title" data-tip="The port of the application or a web page describing how to connect to the application.">Port of Service (Optional):</label>
         <div class="cbi-value-field">
   	  <input type="text"  name="port" <% if app then %>value="<%=app.port%>"<% end %>/>
   	  <%if err then%><div class="error"><%=err.port%></div><%end%>
+  	  <div class="cbi-value-description">If no port is given, it will default to port 80.</div>
         </div>
       </div>
       <div class="cbi-value">                                                                                                                                             
-        <label class="cbi-value-title">Number of hops away this service should be seen (Optional):</label>
+        <label class="cbi-value-title" data-tip="If the number of hops is greater than zero, the application will be visible from other Commotion nodes in the network. Otherwise, it will only be seen on this node.">Number of hops away this service should be seen (Optional):</label>
         <div class="cbi-value-field">
           <input type="text" name="ttl" <% if app then %>value="<%=app.ttl%>"<% end %>/>
           <%if err then%><div class="error"><%=err.ttl%></div><%end%>
+          <div class="cbi-value-description">How many nodes away your application will be seen.</div>
         </div>
       </div>
       <div class="cbi-value">
@@ -93,19 +102,22 @@
           <option value="tcp" <% if app and app.transport == "tcp" then %>selected<% end %>>tcp</option>
           <option value="udp" <% if app and app.transport == "udp" then %>selected<% end %>>udp</option>
           </select>
+          <div class="cbi-value-description">Choose between TCP or UDP. If neither is chosen, it will default to TCP.</div>
         </div>
       </div>
       <div class="cbi-value">
-        <label class="cbi-value-title">Is this application synchronous?</label>
+        <label class="cbi-value-title" data-tip="If this application needs to be always available for connections (like websites or file servers), keep this checked. For delay-tolerant applications, uncheck this option.">Is this application synchronous?</label>
         <div class="cbi-value-field">
           <input type="checkbox" name="synchronous" value="1" <% if ((app and app.synchronous == "1") or not app) then %>checked<% end %>/>
+          <div class="cbi-value-description">Whether the application should always available for connections.</div>
 	</div>
       </div>
       <% if page.allowpermanent == "1" then %>
       <div class="cbi-value">
-        <label class="cbi-value-title">Is this application permanent?</label>
+        <label class="cbi-value-title" data-tip="If this is checked, the application will not be removed from the applications list after the default expiration period.">Is this application permanent?</label>
         <div class="cbi-value-field">
           <input type="checkbox" name="permanent" value="1" <% if app and app.permanent == "1" then %>checked<% end %>/>
+          <div class="cbi-value-description">If checked, application will not expire.</div>
 	</div>
       </div>
       <% end %>
