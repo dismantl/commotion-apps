@@ -23,9 +23,9 @@ include $(INCLUDE_DIR)/package.mk
 define Package/$(PKG_NAME)
   SECTION:=commotion
   CATEGORY:=Commotion
-  DEPENDS:=+commotionbase +luci-commotion +luci-theme-commotion
+  DEPENDS:=+luci-commotion +luci-theme-commotion +netcat
   TITLE:=Commotion Application Portal
-  URL:=http://commotionwireless.net
+  URL:=https://commotionwireless.net
 endef
 
 define Build/Configure
@@ -39,12 +39,12 @@ define Package/$(PKG_NAME)/description
 endef
 
 define Package/$(PKG_NAME)/install
-	$(INSTALL_DIR) $(1)/www/luci-static/commotion
-	$(CP) -a ./luci-static/commotion/* $(1)/www/luci-static/commotion/ 2>/dev/null || true
+	$(INSTALL_DIR) $(1)/www/luci-static/$(THEME_NAME)
+	$(CP) $(PKG_BUILD_DIR)/luci-static/$(THEME_NAME)/* $(1)/www/luci-static/$(THEME_NAME)/ || true
 	$(INSTALL_DIR) $(1)/usr/lib/lua
-	$(CP) -a ./lua/* $(1)/usr/lib/lua/ 2>/dev/null || true
+	$(CP) $(PKG_BUILD_DIR)/lua/* $(1)/usr/lib/lua/ || true
 	$(INSTALL_DIR) $(1)/usr/sbin
-	$(CP) -a ./commotion-service-parser $(1)/usr/sbin/ 2>/dev/null || true
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/commotion-service-parser $(1)/usr/sbin/ || true
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))

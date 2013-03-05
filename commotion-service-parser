@@ -3,6 +3,11 @@
 PLACEHOLDER="#@#@#@#@#@"
 NEWLINE_PLACEHOLDER="#%#%#%#%#%#%"
 
+# Make sure Servald has at least one identity, needed to verify signatures
+if [ -z `servald keyring list` ]; then
+	servald keyring add
+fi
+
 touch /etc/config/applications
 
 # Make sure avahi-client is running. If not, start it.
