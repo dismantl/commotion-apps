@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if ! grep -q "commotion-service-parser" /etc/crontabs/root 2>/dev/null; then
+        echo "*/5 * * * *       /usr/sbin/commotion-service-parser" >> /etc/crontabs/root
+fi
+
+exit 0
