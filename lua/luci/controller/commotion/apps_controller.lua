@@ -1,22 +1,3 @@
---[[
-
-appSplash - LuCI based Application Front end.
-Copyright (C) <2012>  <Seamus Tuohy>
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-]]--
-
 module("luci.controller.commotion.apps_controller", package.seeall)
 
 require "luci.model.uci"
@@ -200,6 +181,7 @@ function admin_edit_settings(error_info, bad_settings)
 end
 
 function action_settings()
+	local type_table
 	local uci = luci.model.uci.cursor()
 	local error_info = {}
 	local settings = {
@@ -220,11 +202,16 @@ function action_settings()
 	if (not luci.http.formvalue("app_type") or luci.http.formvalue("app_type") == '') then
 		error_info.app_type = "Must include at least one category"
 	else
-		for i, app_type in pairs(luci.http.formvalue("app_type")) do
+		if (type(luci.http.formvalue("app_type")) == "string") then
+			type_table = {luci.http.formvalue("app_type")}
+		else
+			type_table = luci.http.formvalue("app_type")
+		end
+		for i, app_type in pairs(type_table) do
 			if (app_type == '') then
-				table.remove(luci.http.formvalue("app_type"),i)
+				table.remove(type_table,i)
 			else
-				luci.http.formvalue("app_type")[i] = html_encode(app_type)
+				type_table[i] = html_encode(app_type)
 			end
 		end
 	end
@@ -233,7 +220,7 @@ function action_settings()
 		admin_edit_settings(error_info,settings)
 		return
 	else
-		uci:set_list("applications", "settings", "category", luci.http.formvalue("app_type"))
+		uci:set_list("applications", "settings", "category", type_table)
 		for i, val in pairs(settings) do
 			--uci:set("applications","settings","expiration",luci.http.formvalue("expiration"))
 			uci:set("applications","settings",i,val)
@@ -250,7 +237,7 @@ function action_add(edit_app)
 	local uci = luci.model.uci.cursor()
 	local bad_data = {}
 	local error_info = {}
-	local expiration = uci:get("applications","settings","expiration")
+	local expiration = uci:get("applications","settings","expiration") or 86400
 	local allowpermanent = uci:get("applications","settings","allowpermanent")
 	local autoapprove = uci:get("applications","settings","autoapprove")
 	local checkconnect = uci:get("applications","settings","checkconnect")
@@ -510,6 +497,7 @@ ${app_types}
 		  ttl = values.ttl,
 		  proto = values.transport or 'tcp',
 		  app_types = app_types,
+		  synchronous = values.synchronous,
 		  expiration = expiration
 		}
 		
