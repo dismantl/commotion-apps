@@ -6,7 +6,7 @@ margin-top:8px;
 
 .app {
 padding:10px;
-height:85px;
+min-height:85px;
 }
 
 .app img {
