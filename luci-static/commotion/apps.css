@@ -37,8 +37,6 @@ font-weight:bold;
 
 #maincontent .apps_form label { width:180px; }
 
-.apps_form .cbi-value-field { margin-left: 200px; }
-
 .apps_form #apps_advanced {
 width:180px;
 text-align:right;

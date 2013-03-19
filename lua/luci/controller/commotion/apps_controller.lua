@@ -510,7 +510,7 @@ ${app_types}
 				DIE("Unable to remove old UCI entry")
 				return
 			end
-			resp = luci.sys.exec("echo \"" .. signing_msg:gsub("`","\\`") .. "\" |serval-sign")
+			resp = luci.sys.exec("echo \"" .. signing_msg:gsub("`","\\`") .. "\" |serval-sign -s $(servald keyring list |head -1 |grep -o ^[0-9A-F]*)")
 		end
 		if (luci.sys.exec("echo $?") ~= '0\n' or resp == '') then
 			DIE("Failed to sign service advertisement")
