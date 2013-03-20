@@ -6,6 +6,7 @@ require "luci.sys"
 require "luci.fs"
 require "commotion_helpers"
 function index()
+    entry({"commotion", "index", "apps"}, call("load_apps"), "Local Applications", 20).dependent=true
     entry({"apps"}, call("load_apps"), "Local Applications", 20).dependent=true
     entry({"admin","commotion","apps"}, call("admin_load_apps"), "Local Applications", 50).dependent=true
     --entry({"admin", "commotion", "apps", "list"}, cbi("commotion/apps_cbi")).dependent=true
