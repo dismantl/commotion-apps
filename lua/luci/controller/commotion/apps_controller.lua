@@ -504,13 +504,13 @@ ${app_types}
 		-- Create Serval identity keypair for service, then sign service advertisement with it
 		signing_msg = printf(signing_tmpl,fields)
 		if (luci.http.formvalue("fingerprint") and is_hex(luci.http.formvalue("fingerprint")) and luci.http.formvalue("fingerprint"):len() == 64 and edit_app) then
-			resp = luci.sys.exec("echo \"" .. signing_msg:gsub("`","\\`") .. "\" |serval-sign -s " .. luci.http.formvalue("fingerprint"))
+			resp = luci.sys.exec("echo \"" .. signing_msg:gsub("`","\\`") .. "\" |SERVALINSTANCE_PATH=/etc/serval serval-sign -s " .. luci.http.formvalue("fingerprint"))
 		else
 			if (not deleted_uci and edit_app and not uci:delete("applications",UUID)) then
 				DIE("Unable to remove old UCI entry")
 				return
 			end
-			resp = luci.sys.exec("echo \"" .. signing_msg:gsub("`","\\`") .. "\" |serval-sign -s $(servald keyring list |head -1 |grep -o ^[0-9A-F]*)")
+			resp = luci.sys.exec("echo \"" .. signing_msg:gsub("`","\\`") .. "\" |SERVALINSTANCE_PATH=/etc/serval serval-sign -s $(SERVALINSTANCE_PATH=/etc/serval servald keyring list |head -1 |grep -o ^[0-9A-F]*)")
 		end
 		if (luci.sys.exec("echo $?") ~= '0\n' or resp == '') then
 			DIE("Failed to sign service advertisement")
