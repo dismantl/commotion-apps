@@ -4,8 +4,8 @@ PLACEHOLDER="#@#@#@#@#@"
 NEWLINE_PLACEHOLDER="#%#%#%#%#%#%"
 
 # Make sure Servald has at least one identity, needed to verify signatures
-if [ -z `servald keyring list` ]; then
-	servald keyring add
+if [ -z `SERVALINSTANCE_PATH=/etc/serval servald keyring list` ]; then
+	SERVALINSTANCE_PATH=/etc/serval servald keyring add
 fi
 
 touch /etc/config/applications
@@ -202,7 +202,7 @@ $app_types
 <txt-record>expiration=$expiration</txt-record>
 <txt-record>synchronous=$synchronous</txt-record>"
 
-	echo "$sig_tmpl" |serval-verify -s $signature -i $fingerprint
+	echo "$sig_tmpl" |SERVALINSTANCE_PATH=/etc/serval serval-verify -s $signature -i $fingerprint
 	if [ $? -ne 0 ]; then
 		echo "Service failed verification"
 		echo "$sig_tmpl"

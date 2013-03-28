@@ -1,5 +1,5 @@
 <div class="app <%=this_app.uuid%> <%=approved%>">
-	<img src="<%=this_app.icon%>"  align="Left" width="85" height="85">
+	<img src="<% if not this_app.icon:match("^[a-z]+://") then %>http://<% end %><%=this_app.icon%>"  align="Left" width="85" height="85">
 	<div class="name">
 	<h4><a href="<% if not this_app.ipaddr:match("^[a-z]+://") then %>http://<% end %><%=this_app.ipaddr%><% if this_app.port and not this_app.ipaddr:match("[:/]") or (this_app.ipaddr:match("^[a-z]+://") and not this_app.ipaddr:match("^[a-z]+://[^/:]*[/:]")) then %>:<%=this_app.port%><% end %>"><%=this_app.name%></a></h4>
 	<div class="app-info">
