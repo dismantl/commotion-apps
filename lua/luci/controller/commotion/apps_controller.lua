@@ -325,9 +325,8 @@ function action_add(edit_app)
 	-- Check service for connectivity, if requested
 	if (values.synchronous and values.synchronous == "1" and checkconnect == "1") then
 		if (values.ipaddr ~= '' and not is_ip4addr(values.ipaddr)) then
-			url = string.gsub(values.ipaddr, 'http://', '', 1)
-			url = url:gsub('https://', '', 1)
-			url = url:match("^[^/]+") -- remove anything after the domain name
+			url = string.gsub(values.ipaddr, '[a-z]+://', '', 1)
+			url = url:match("^[^/:]+") -- remove anything after the domain name/IP address
 			-- url = url:match("[%a%d-]+\.%w+$") -- remove subdomains (** actually we should probably keep subdomains **)
 		else
 			url = values.ipaddr

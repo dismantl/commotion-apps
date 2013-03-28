@@ -1,7 +1,7 @@
 <div class="app <%=this_app.uuid%> <%=approved%>">
 	<img src="<%=this_app.icon%>"  align="Left" width="85" height="85">
 	<div class="name">
-	<h4><a href="<% if is_ip4addr(this_app.ipaddr) then %>http://<% end %><%=this_app.ipaddr%><% if this_app.port then %>:<%=this_app.port%><% end %>"><%=this_app.name%></a></h4>
+	<h4><a href="<% if not this_app.ipaddr:match("^[a-z]+://") then %>http://<% end %><%=this_app.ipaddr%><% if this_app.port and not this_app:match("[:/]") or (this_app:match("^[a-z]+://") and not this_app:match("^[a-z]+://[^/:]*[/:]")) then %>:<%=this_app.port%><% end %>"><%=this_app.name%></a></h4>
 	<div class="app-info">
 	  <img class="info-button" src="<%=media%>/question.png" />
 	  <div class="app-tooltip">
