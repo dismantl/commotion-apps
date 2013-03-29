@@ -54,7 +54,7 @@ for app in $apps; do
 	checkconnect=`uci get applications.settings.checkconnect`
 	app_synchronous=`uci get applications.$app.synchronous`
 	if [ "$checkconnect" == "1" -a "$app_synchronous" == "1" ]; then
-		app_ipaddr=`uci get applications.$app.ipaddr |sed -e s/"^http:\/\/"/""/ |sed -e s/"^https:\/\/"/""/ |grep -E -o "^[^/]+"`
+		app_ipaddr=`uci get applications.$app.ipaddr |sed -e s/"^[[:alpha:]]*:\/\/"/""/ |grep -E -o "^[^/:]+"`
 		app_port=`uci get applications.$app.port`
 		if [ -z "$app_port" ]; then
 			app_port="80"
@@ -174,7 +174,7 @@ while read -r service; do
 	
 	# check connectivity
 	app_port="$port"
-	app_ipaddr=`echo "$ipaddr" |sed -e s/"^http:\/\/"/""/ |sed -e s/"^https:\/\/"/""/ |grep -E -o "^[^/]+"`
+	app_ipaddr=`echo "$ipaddr" |sed -e s/"^[[:alpha:]]*:\/\/"/""/ |grep -E -o "^[^/:]+"`
 	if [ -z "$app_port" ]; then
 		app_port="80"
 	fi
