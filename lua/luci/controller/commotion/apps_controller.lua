@@ -390,19 +390,12 @@ function action_add(edit_app)
 	end
 	if (values.ttl == '') then values.ttl = '0' end
 	
-	-- Update application
+	-- Update application if UUID has changed
 	if (luci.http.formvalue("uuid") and edit_app) then 
-		if ((luci.http.formvalue("uuid") ~= uci_encode(values.ipaddr .. values.port)) or (luci.http.formvalue("fingerprint") and values.ttl == '0')) then
-			if (luci.http.formvalue("fingerprint")) then
-	   			if (not uci:delete("applications",luci.http.formvalue("fingerprint"))) then
-					DIE("Unable to remove old UCI entry")
-					return
-				end
-			else
-				if (not uci:delete("applications",luci.http.formvalue("uuid"))) then
-					DIE("Unable to remove old UCI entry")
-					return
-				end
+		if (luci.http.formvalue("uuid") ~= uci_encode(values.ipaddr .. values.port)) then
+			if (not uci:delete("applications",luci.http.formvalue("uuid"))) then
+				DIE("Unable to remove old UCI entry")
+				return
 			end
 			deleted_uci = 1
 			UUID = uci_encode(values.ipaddr .. values.port)
@@ -518,7 +511,7 @@ ${app_types}
 		end
 		
 		_,_,fields.signature,fields.fingerprint = resp:find('([A-F0-9]+)\r?\n?([A-F0-9]+)')
-		UUID = fields.fingerprint
+		-- UUID = fields.fingerprint  -- not for single-key node
 		values.fingerprint = fields.fingerprint
 		values.signature = fields.signature
 		
@@ -538,22 +531,22 @@ ${app_types}
 			return
 		end
 		
-	else
+	else  -- if (tonumber(values.ttl) > 0)
 		-- delete service file
-		if (luci.http.formvalue("fingerprint") and is_hex(luci.http.formvalue("fingerprint")) and luci.http.formvalue("fingerprint"):len() == 64 and luci.fs.isfile("/etc/avahi/services/" .. luci.http.formvalue("fingerprint") .. ".service") and edit_app) then
-			local ret = luci.sys.exec("rm /etc/avahi/services/" .. luci.http.formvalue("fingerprint") .. ".service; echo $?")
+		if (luci.fs.isfile("/etc/avahi/services/" .. luci.http.formvalue("uuid") .. ".service") and edit_app) then
+			local ret = luci.sys.exec("rm /etc/avahi/services/" .. luci.http.formvalue("uuid") .. ".service; echo $?")
 			if (ret:sub(-2,-2) ~= '0') then
 				DIE("Error removing Avahi service file")
 				return
 			end
 			luci.sys.call("/etc/init.d/avahi-daemon restart")
 		end
-	end -- if (luci.http.formvalue("ttl") > 0)
+	end -- if (tonumber(values.ttl) > 0)
 	    
 	-- Commit everthing to UCI
 	if (values.approved == "1" or values.approved == "0") then
 		uci:set("applications", "known_apps", "known_apps")
-		uci:set("applications", "known_apps", values.fingerprint and values.fingerprint or values.uuid, (values.approved == "1") and "approved" or "blacklisted")
+		uci:set("applications", "known_apps", values.uuid, (values.approved == "1") and "approved" or "blacklisted")
 	end
 	uci:section('applications', 'application', UUID, values)
 	if (luci.http.formvalue("type") ~= nil) then

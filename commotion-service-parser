@@ -42,7 +42,7 @@ for app in $apps; do
 		#else
 			if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" == "1" ]; then
 				#remove avahi service file
-				rm /etc/avahi/services/$app_fingerprint.service
+				rm /etc/avahi/services/$app.service
 			fi
 			# remove entry
 			uci delete applications.$app
@@ -71,7 +71,7 @@ for app in $apps; do
 				# remove UCI & service file
 				uci delete applications.$app
 				if [ -n "$app_fingerprint" -a -n "$localapp" -a "$localapp" == "1" ]; then
-					rm /etc/avahi/services/$app_fingerprint.service
+					rm /etc/avahi/services/$app.service
 				fi
 			else
 				# noconnect++
@@ -112,7 +112,7 @@ while read -r service; do
 	match=''
 	apps=`cat /etc/config/applications |grep "^config application " |cut -c21- |sed -e s/\'$//`
 	for app in $apps; do
-		if [ $app == $fingerprint ]; then
+		if [ `uci get applications.$app.fingerprint` == $fingerprint ]; then
 			if [ `uci get applications.$app.signature` == $signature ]; then
 				match=true
 			fi
@@ -124,7 +124,7 @@ while read -r service; do
 
 	# Gather service information
 	APPNAME=`echo $txt |grep -o application=[^\"]* |cut -c13- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
-	UUID="$fingerprint"
+	#UUID="$fingerprint"
 	protocol=`echo $service |awk -F ';' '{print $2}' |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	transport=`echo $service |awk -F ';' '{print $4}' |grep -o "[^_]*$" |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	full_type=`echo $service |awk -F ';' '{print $4}'`
@@ -134,6 +134,7 @@ while read -r service; do
 	ipaddr=`echo $txt |grep -o ipaddr=[^\"]* |cut -c8- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g |sed -e s/'"'/"%22"/g`
 	port=`echo $service | awk -F ';' '{print $8}'`
 	service_uuid=`echo "$ipaddr$port" |awk 'BEGIN{FS="";for(n=0;n<256;n++)ord[sprintf("%c",n)]=n}{for(i=1;i<=NF;i++)if(match($i,/[a-zA-Z0-9]/)){printf $i} else {printf "_"ord[$i]}}'`
+	UUID="$service_uuid"
 	icon=`echo $txt |grep -o icon=[^\"]* |cut -c6- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g |sed -e s/'"'/"%22"/g`
 	description=`echo $txt |grep -o description=[^\"]* |cut -c13- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	types=`echo $txt |grep -o type=[^\"]* |cut -c6- |sed 's/ /$PLACEHOLDER/g' |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
@@ -239,7 +240,7 @@ $app_types
 	uci set applications.$UUID.noconnect="0"
 
 	# check if service is in applications.known_apps
-	found=`uci get applications.known_apps.$fingerprint`
+	found=`uci get applications.known_apps.$UUID`
 	if [ -n "$found" -a "$found" == "approved" ]; then
 		uci set applications.$UUID.approved="1"
 	elif [ -n "$found" -a "$found" == "blacklisted" ]; then
