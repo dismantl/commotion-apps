@@ -331,7 +331,13 @@ function action_add(edit_app)
 		else
 			url = values.ipaddr
 		end
-		local connect = luci.sys.exec("nc -z -w 5 \"" .. url .. '" "' .. ((values.port and values.port ~= "") and values.port or "80") .. '"; echo $?')
+		local url_port
+		if (values.port and values.port ~= '') then
+			url_port = values.port
+		else
+			url_port = values.ipaddr:match(":[0-9]+"):gsub(":","")
+		end
+		local connect = luci.sys.exec("nc -z -w 5 \"" .. url .. '" "' .. ((url_port and url_port ~= "") and url_port or "80") .. '"; echo $?')
 		if (connect:sub(-2,-2) ~= '0') then  -- exit status != 0 -> failed to resolve url
 			error_info.ipaddr = "Failed to resolve URL or connect to host"
 		end
