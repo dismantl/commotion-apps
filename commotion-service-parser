@@ -57,7 +57,12 @@ for app in $apps; do
 		app_ipaddr=`uci get applications.$app.ipaddr |sed -e s/"^[[:alpha:]]*:\/\/"/""/ |grep -E -o "^[^/:]+"`
 		app_port=`uci get applications.$app.port`
 		if [ -z "$app_port" ]; then
-			app_port="80"
+			local url_port=`uci get applications.$app.ipaddr |grep -E -o ":[[:digit:]]+" |sed s/':'/''/`
+			if [ -n "$url_port" ]; then
+				app_port="$url_port"
+			else
+				app_port="80"
+			fi
 		fi
 		nc -z -w 5 "$app_ipaddr" "$app_port"
 		# if connectivity, uci set applications.$app.noconnect="0"
@@ -176,7 +181,12 @@ while read -r service; do
 	app_port="$port"
 	app_ipaddr=`echo "$ipaddr" |sed -e s/"^[[:alpha:]]*:\/\/"/""/ |grep -E -o "^[^/:]+"`
 	if [ -z "$app_port" ]; then
-		app_port="80"
+		local url_port=`echo "$ipaddr" |grep -E -o ":[[:digit:]]+" |sed s/':'/''/`
+		if [ -n "$url_port" ]; then
+			app_port="$url_port"
+		else
+			app_port="80"
+		fi
 	fi
 	nc -z -w 5 "$app_ipaddr" "$app_port"
 	if [ $? -ne 0 ]; then
