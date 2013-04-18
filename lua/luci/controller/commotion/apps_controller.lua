@@ -253,7 +253,6 @@ function action_add(edit_app)
 		  ttl = luci.http.formvalue("ttl"),
 		  transport = luci.http.formvalue("transport"),
 		  --permanent = luci.http.formvalue("permanent"),
-		  synchronous = luci.http.formvalue("synchronous"),
 		  noconnect = '0',
 		  protocol = 'IPv4',
 		  localapp = '1' -- all manually created apps get a 'localapp' flag
@@ -289,11 +288,6 @@ function action_add(edit_app)
 		return
 	end
 	
-	if (values.synchronous and values.synchronous ~= "1") then
-		DIE("Invalid synchronous value")
-		return
-	end
-	
 	-- escape input strings
 	for i, field in pairs(values) do
 		if (i ~= 'ipaddr' and i ~= 'icon') then
@@ -323,7 +317,7 @@ function action_add(edit_app)
 	end
 	
 	-- Check service for connectivity, if requested
-	if (values.synchronous and values.synchronous == "1" and checkconnect == "1") then
+	if (checkconnect == "1") then
 		if (values.ipaddr ~= '' and not is_ip4addr(values.ipaddr)) then
 			url = string.gsub(values.ipaddr, '[a-z]+://', '', 1)
 			url = url:match("^[^/:]+") -- remove anything after the domain name/IP address
@@ -391,9 +385,6 @@ function action_add(edit_app)
 	elseif (allowpermanent == '1' and luci.http.formvalue("permanent") and luci.http.formvalue("permanent") == '1') then
 		values.expiration = '0'
 	end
-	if (values.synchronous == nil) then
-		values.synchronous = '0'
-	end
 	if (values.ttl == '') then values.ttl = '0' end
 	
 	-- Update application
@@ -435,8 +426,7 @@ function action_add(edit_app)
 ${app_types}
 <txt-record>icon=${icon}</txt-record>
 <txt-record>description=${description}</txt-record>
-<txt-record>expiration=${expiration}</txt-record>
-<txt-record>synchronous=${synchronous}</txt-record>]]
+<txt-record>expiration=${expiration}</txt-record>]]
 		tmpl = [[
 <?xml version="1.0" standalone='no'?><!--*-nxml-*-->
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
@@ -503,7 +493,6 @@ ${app_types}
 		  ttl = values.ttl,
 		  proto = values.transport or 'tcp',
 		  app_types = app_types,
-		  synchronous = values.synchronous,
 		  expiration = expiration
 		}
 		

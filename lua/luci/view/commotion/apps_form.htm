@@ -105,13 +105,6 @@
           <div class="cbi-value-description">Choose between TCP or UDP. If neither is chosen, it will default to TCP.</div>
         </div>
       </div>
-      <div class="cbi-value">
-        <label class="cbi-value-title" data-tip="If this application needs to be always available for connections (like websites or file servers), keep this checked. For delay-tolerant applications, uncheck this option.">Is this application synchronous?</label>
-        <div class="cbi-value-field">
-          <input type="checkbox" name="synchronous" value="1" <% if ((app and app.synchronous == "1") or not app) then %>checked<% end %>/>
-          <div class="cbi-value-description">Whether the application should always available for connections.</div>
-	</div>
-      </div>
       <% if page.allowpermanent == "1" then %>
       <div class="cbi-value">
         <label class="cbi-value-title" data-tip="If this is checked, the application will not be removed from the applications list after the default expiration period.">Is this application permanent?</label>

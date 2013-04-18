@@ -52,8 +52,7 @@ for app in $apps; do
 	
 	# check connectivity
 	checkconnect=`uci get applications.settings.checkconnect`
-	app_synchronous=`uci get applications.$app.synchronous`
-	if [ "$checkconnect" == "1" -a "$app_synchronous" == "1" ]; then
+	if [ "$checkconnect" == "1" ]; then
 		app_ipaddr=`uci get applications.$app.ipaddr |sed -e s/"^[[:alpha:]]*:\/\/"/""/ |grep -E -o "^[^/:]+"`
 		app_port=`uci get applications.$app.port`
 		if [ -z "$app_port" ]; then
@@ -143,7 +142,6 @@ while read -r service; do
 	description=`echo $txt |grep -o description=[^\"]* |cut -c13- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	types=`echo $txt |grep -o type=[^\"]* |cut -c6- |sed 's/ /$PLACEHOLDER/g' |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	expiration=`echo $txt |grep -o expiration=[^\"]* |cut -c12-`
-	synchronous=`echo $txt |grep -o synchronous=[^\"]* |cut -c13-`
 
 	##################### INPUT VALIDATION/SANITIZING ##########################
 	# HTML ENCODING: sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g
@@ -153,7 +151,7 @@ while read -r service; do
 	# is_port: if [ $? -eq 0 -a $test -ge 0 -a $test -le 65535 ]
 	# uci_encode: awk 'BEGIN{FS="";for(n=0;n<256;n++)ord[sprintf("%c",n)]=n}{for(i=1;i<=NF;i++)if(match($i,/[a-zA-Z0-9]/)){printf $i} else {printf "_"ord[$i]}}'
 	
-	if [ -z "$APPNAME" -o -z "$nick" -o -z "$icon" -o -z "$description" -o -z "$synchronous" ]; then
+	if [ -z "$APPNAME" -o -z "$nick" -o -z "$icon" -o -z "$description" ]; then
 		continue
 	fi
 	
@@ -169,10 +167,6 @@ while read -r service; do
 	fi
 	
 	if [ -n "$expiration" -a -z "`echo "$expiration" |grep -E "^[[:digit:]]+$"`" -a "$expiration" -gt 0 ]; then
-		continue
-	fi
-	
-	if [ "$synchronous" != "0" -a "$synchronous" != "1" ]; then
 		continue
 	fi
 	
@@ -209,8 +203,7 @@ while read -r service; do
 $app_types
 <txt-record>icon=$icon</txt-record>
 <txt-record>description=$description</txt-record>
-<txt-record>expiration=$expiration</txt-record>
-<txt-record>synchronous=$synchronous</txt-record>"
+<txt-record>expiration=$expiration</txt-record>"
 
 	echo "$sig_tmpl" |SERVALINSTANCE_PATH=/etc/serval serval-verify -s $signature -i $fingerprint
 	if [ $? -ne 0 ]; then
@@ -245,7 +238,6 @@ $app_types
 	if [ -n "$autoapprove" -a "$autoapprove" == "1" ]; then
 		uci set applications.$UUID.approved="1"
 	fi
-	uci set applications.$UUID.synchronous="$synchronous"
 	uci set applications.$UUID.noconnect="0"
 
 	# check if service is in applications.known_apps

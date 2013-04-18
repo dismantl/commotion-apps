@@ -33,7 +33,6 @@ Applications are advertised on a Commotion mesh network using Avahi/mDNS. Each a
         <txt-record>fingerprint=FA7E03D576F9A6752194CFCBE402C455B7F0F8C8894F7C05F17ECE500D2DC648</txt-record>
         <txt-record>signature=E07B1282AE1601C334CEA861DF795D57D00603BA00D97F382720F4146DDCD4427973D171C89BCA0EAAF1D72E9EF0DB2367CE07BBFFF6FF27FF01F1DFBEB65D0B</txt-record>
         <txt-record>icon=https://exampleapplication.com/icon.png</txt-record>
-        <txt-record>synchronous=1</txt-record> <!-- whether application is synchronous or asynchronous (i.e. delay-tolerant) -->
         <txt-record>description=Commotion is an open-source communication tool that uses mobile phones, computers, and other wireless devices to create decentralized mesh networks.</txt-record>
         
       </service>
