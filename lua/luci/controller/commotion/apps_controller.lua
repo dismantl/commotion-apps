@@ -251,7 +251,6 @@ function action_add(edit_app)
 		  nick =  luci.http.formvalue("nick"),
 		  description =  luci.http.formvalue("description"),
 		  ttl = luci.http.formvalue("ttl"),
-		  transport = luci.http.formvalue("transport"),
 		  --permanent = luci.http.formvalue("permanent"),
 		  noconnect = '0',
 		  protocol = 'IPv4',
@@ -409,7 +408,7 @@ function action_add(edit_app)
 	if (tonumber(values.ttl) > 0) then
 			
 		type_tmpl = '<txt-record>type=${app_type}</txt-record>'
-		signing_tmpl = [[<type>_${type}._${proto}</type>
+		signing_tmpl = [[<type>_${type}._tcp</type>
 <domain-name>mesh.local</domain-name>
 <port>${port}</port>
 <txt-record>application=${name}</txt-record>
@@ -441,11 +440,8 @@ ${app_types}
 ]]
 
 		-- FILL IN ${TYPE} BY LOOKING UP PORT IN /ETC/SERVICES, DEFAULT TO 'commotion'
-		if (values.transport == '') then                                      
-			values.transport = 'tcp'
-		end
 		if (values.port ~= '') then
-			local command = "grep " .. values.port .. "/" .. values.transport .. " /etc/services |awk '{ printf(\"%s\", $1) }'"
+			local command = "grep " .. values.port .. "/tcp /etc/services |awk '{ printf(\"%s\", $1) }'"
 			service_type = luci.sys.exec(command)
 			if (service_type == '') then
 				service_type = 'commotion'
@@ -484,7 +480,6 @@ ${app_types}
 		  nick = values.nick,
 		  description = values.description,
 		  ttl = values.ttl,
-		  proto = values.transport or 'tcp',
 		  app_types = app_types,
 		  expiration = expiration
 		}

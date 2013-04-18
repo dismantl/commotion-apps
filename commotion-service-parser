@@ -130,7 +130,6 @@ while read -r service; do
 	APPNAME=`echo $txt |grep -o application=[^\"]* |cut -c13- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	#UUID="$fingerprint"
 	protocol=`echo $service |awk -F ';' '{print $2}' |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
-	transport=`echo $service |awk -F ';' '{print $4}' |grep -o "[^_]*$" |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	full_type=`echo $service |awk -F ';' '{print $4}'`
 	domain=`echo $service |awk -F ';' '{print $5}'`
 	nick=`echo $txt |grep -o nick=[^\"]* |cut -c6- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
@@ -217,7 +216,6 @@ $app_types
 	uci set applications.$UUID=application
 	uci set applications.$UUID.name="$APPNAME"
 	uci set applications.$UUID.protocol="$protocol"
-	uci set applications.$UUID.transport="$transport"
 	uci set applications.$UUID.nick="$nick"
 	if [ -n $ttl ]; then
 		uci set applications.$UUID.ttl="$ttl"
