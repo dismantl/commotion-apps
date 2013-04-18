@@ -94,17 +94,6 @@
           <div class="cbi-value-description">How many nodes away your application will be seen.</div>
         </div>
       </div>
-      <div class="cbi-value">
-        <label class="cbi-value-title">Transport type (Optional):</label>
-        <div class="cbi-value-field">
-          <select size="1" name="transport" class="cbi-input-select">
-          <option value=""></option>
-          <option value="tcp" <% if app and app.transport == "tcp" then %>selected<% end %>>tcp</option>
-          <option value="udp" <% if app and app.transport == "udp" then %>selected<% end %>>udp</option>
-          </select>
-          <div class="cbi-value-description">Choose between TCP or UDP. If neither is chosen, it will default to TCP.</div>
-        </div>
-      </div>
       <% if page.allowpermanent == "1" then %>
       <div class="cbi-value">
         <label class="cbi-value-title" data-tip="If this is checked, the application will not be removed from the applications list after the default expiration period.">Is this application permanent?</label>
