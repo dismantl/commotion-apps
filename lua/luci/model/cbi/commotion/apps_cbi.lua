@@ -9,7 +9,6 @@ function s.filter(self, section)
 end
 
 name = s:option(Value, "name", "App Name"); name.optional=false; name.rmempty=false;
-nick = s:option(Value, "nick", "App Nickname"); nick.optional=false; nick.rmempty=false;
 ipaddr = s:option(Value, "ipaddr", "IP Address or URL"); ipaddr.optional=false; ipaddr.rmempty=false;
 port = s:option(Value, "port", "Port"); port.optional=true; port.rmempty = true;
 icon = s:option(Value, "icon", "Icon"); icon.optional=false; icon.rmemtpy=false;

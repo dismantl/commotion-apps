@@ -25,7 +25,6 @@ Applications are advertised on a Commotion mesh network using Avahi/mDNS. Each a
         <!--<host-name>%h.mesh.local</host-name>--> <!-- DON'T set hostname, because avahi will fail to resolve it when using mesh.local domain-->
         <port>443</port> <!--optional-->
         <txt-record>application=Example Application</txt-record>
-        <txt-record>nick=Example Application Nickname</txt-record>
         <txt-record>ttl=2</txt-record> <!--optional: how many hops away the service should be advertised-->
         <txt-record>ipaddr=https://commotionwireless.net</txt-record> <!-- IP address or URL of service host -->
         <txt-record>type=collaboration</txt-record>
