@@ -132,7 +132,6 @@ while read -r service; do
 	protocol=`echo $service |awk -F ';' '{print $2}' |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	full_type=`echo $service |awk -F ';' '{print $4}'`
 	domain=`echo $service |awk -F ';' '{print $5}'`
-	nick=`echo $txt |grep -o nick=[^\"]* |cut -c6- |sed -e s/"\&#10;"/"$NEWLINE_PLACEHOLDER"/g |sed -e s/"\&#13;"/"\r"/g |sed -e s/"\&quot;"/'"'/g |sed -e s/"&"/"\&amp;"/g |sed -e s/"<"/"\&lt;"/g |sed -e s/">"/"\&gt;"/g |sed -e s/'"'/"\&quot;"/g |sed -e s/"$NEWLINE_PLACEHOLDER"/"\&#10;"/g |sed -e s/"\r"/"\&#13;"/g`
 	ttl=`echo $txt |grep -o ttl=[^\"]* |cut -c5-`
 	ipaddr=`echo $txt |grep -o ipaddr=[^\"]* |cut -c8- |sed -e s/"<"/"%3C"/g |sed -e s/">"/"%3E"/g |sed -e s/"[[:space:]]"/"%20"/g |sed -e s/'"'/"%22"/g`
 	port=`echo $service | awk -F ';' '{print $8}'`
@@ -151,7 +150,7 @@ while read -r service; do
 	# is_port: if [ $? -eq 0 -a $test -ge 0 -a $test -le 65535 ]
 	# uci_encode: awk 'BEGIN{FS="";for(n=0;n<256;n++)ord[sprintf("%c",n)]=n}{for(i=1;i<=NF;i++)if(match($i,/[a-zA-Z0-9]/)){printf $i} else {printf "_"ord[$i]}}'
 	
-	if [ -z "$APPNAME" -o -z "$nick" -o -z "$icon" -o -z "$description" ]; then
+	if [ -z "$APPNAME" -o -z "$icon" -o -z "$description" ]; then
 		continue
 	fi
 	
@@ -197,7 +196,6 @@ while read -r service; do
 <domain-name>$domain</domain-name>
 <port>$port</port>
 <txt-record>application=$APPNAME</txt-record>
-<txt-record>nick=$nick</txt-record>
 <txt-record>ttl=$ttl</txt-record>
 <txt-record>ipaddr=$ipaddr</txt-record>
 $app_types
@@ -216,7 +214,6 @@ $app_types
 	uci set applications.$UUID=application
 	uci set applications.$UUID.name="$APPNAME"
 	uci set applications.$UUID.protocol="$protocol"
-	uci set applications.$UUID.nick="$nick"
 	if [ -n $ttl ]; then
 		uci set applications.$UUID.ttl="$ttl"
 	fi

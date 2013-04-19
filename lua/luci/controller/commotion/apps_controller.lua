@@ -248,7 +248,6 @@ function action_add(edit_app)
 		  ipaddr =  luci.http.formvalue("ipaddr"),
 		  port = luci.http.formvalue("port"),
 		  icon =  luci.http.formvalue("icon"),
-		  nick =  luci.http.formvalue("nick"),
 		  description =  luci.http.formvalue("description"),
 		  ttl = luci.http.formvalue("ttl"),
 		  --permanent = luci.http.formvalue("permanent"),
@@ -260,7 +259,7 @@ function action_add(edit_app)
 	-- ###########################################
 	-- #           INPUT VALIDATION              #
 	-- ###########################################
-	for i, val in pairs({"name","ipaddr","description","nick","icon"}) do
+	for i, val in pairs({"name","ipaddr","description","icon"}) do
 		if (not luci.http.formvalue(val) or luci.http.formvalue(val) == '') then
 			error_info[val] = "Missing value"
 		end
@@ -412,7 +411,6 @@ function action_add(edit_app)
 <domain-name>mesh.local</domain-name>
 <port>${port}</port>
 <txt-record>application=${name}</txt-record>
-<txt-record>nick=${nick}</txt-record>
 <txt-record>ttl=${ttl}</txt-record>
 <txt-record>ipaddr=${ipaddr}</txt-record>
 ${app_types}
@@ -477,7 +475,6 @@ ${app_types}
 		  ipaddr = values.ipaddr,
 		  port = values.port,
 		  icon = values.icon,
-		  nick = values.nick,
 		  description = values.description,
 		  ttl = values.ttl,
 		  app_types = app_types,
