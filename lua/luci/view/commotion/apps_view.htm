@@ -29,13 +29,6 @@
  
  <% if admin_vars then %>
    <script type="text/javascript" src="<%=media%>/admin_apps.js"></script>
- <% else %>
- <script type="text/javascript">
-   var types = document.getElementById('types').children;
-   for (var i=0;i < types.length;i++) {
-     types[i].style.display = "block";
-   }
- </script>
  <% end %>
 </div>
 
