@@ -9,10 +9,8 @@ function s.filter(self, section)
 end
 
 name = s:option(Value, "name", "App Name"); name.optional=false; name.rmempty=false;
-nick = s:option(Value, "nick", "App Nickname"); nick.optional=false; nick.rmempty=false;
 ipaddr = s:option(Value, "ipaddr", "IP Address or URL"); ipaddr.optional=false; ipaddr.rmempty=false;
 port = s:option(Value, "port", "Port"); port.optional=true; port.rmempty = true;
-transport = s:option(ListValue, "transport", "Transport type"); transport.optional=false; transport.rmemtpy=true; transport:value("",""); transport:value("tcp","tcp"); transport:value("udp","udp");
 icon = s:option(Value, "icon", "Icon"); icon.optional=false; icon.rmemtpy=false;
 desc = s:option(TextValue, "description", "Description"); desc.optional=false; desc.rmempty=false;
 type = s:option(DynamicList, "type", "Type"); type.default = misc;

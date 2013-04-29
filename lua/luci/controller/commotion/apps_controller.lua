@@ -248,12 +248,9 @@ function action_add(edit_app)
 		  ipaddr =  luci.http.formvalue("ipaddr"),
 		  port = luci.http.formvalue("port"),
 		  icon =  luci.http.formvalue("icon"),
-		  nick =  luci.http.formvalue("nick"),
 		  description =  luci.http.formvalue("description"),
 		  ttl = luci.http.formvalue("ttl"),
-		  transport = luci.http.formvalue("transport"),
 		  --permanent = luci.http.formvalue("permanent"),
-		  synchronous = luci.http.formvalue("synchronous"),
 		  noconnect = '0',
 		  protocol = 'IPv4',
 		  localapp = '1' -- all manually created apps get a 'localapp' flag
@@ -262,7 +259,7 @@ function action_add(edit_app)
 	-- ###########################################
 	-- #           INPUT VALIDATION              #
 	-- ###########################################
-	for i, val in pairs({"name","ipaddr","description","nick","icon"}) do
+	for i, val in pairs({"name","ipaddr","description","icon"}) do
 		if (not luci.http.formvalue(val) or luci.http.formvalue(val) == '') then
 			error_info[val] = "Missing value"
 		end
@@ -286,11 +283,6 @@ function action_add(edit_app)
 	
 	if (luci.http.formvalue("permanent") and (luci.http.formvalue("permanent") ~= '1' or allowpermanent == '0')) then
 		DIE("Invalid permanent value")
-		return
-	end
-	
-	if (values.synchronous and values.synchronous ~= "1") then
-		DIE("Invalid synchronous value")
 		return
 	end
 	
@@ -323,7 +315,7 @@ function action_add(edit_app)
 	end
 	
 	-- Check service for connectivity, if requested
-	if (values.synchronous and values.synchronous == "1" and checkconnect == "1") then
+	if (checkconnect == "1") then
 		if (values.ipaddr ~= '' and not is_ip4addr(values.ipaddr)) then
 			url = string.gsub(values.ipaddr, '[a-z]+://', '', 1)
 			url = url:match("^[^/:]+") -- remove anything after the domain name/IP address
@@ -391,9 +383,6 @@ function action_add(edit_app)
 	elseif (allowpermanent == '1' and luci.http.formvalue("permanent") and luci.http.formvalue("permanent") == '1') then
 		values.expiration = '0'
 	end
-	if (values.synchronous == nil) then
-		values.synchronous = '0'
-	end
 	if (values.ttl == '') then values.ttl = '0' end
 	
 	-- Update application if UUID has changed
@@ -418,18 +407,16 @@ function action_add(edit_app)
 	if (tonumber(values.ttl) > 0) then
 			
 		type_tmpl = '<txt-record>type=${app_type}</txt-record>'
-		signing_tmpl = [[<type>_${type}._${proto}</type>
+		signing_tmpl = [[<type>_${type}._tcp</type>
 <domain-name>mesh.local</domain-name>
 <port>${port}</port>
 <txt-record>application=${name}</txt-record>
-<txt-record>nick=${nick}</txt-record>
 <txt-record>ttl=${ttl}</txt-record>
 <txt-record>ipaddr=${ipaddr}</txt-record>
 ${app_types}
 <txt-record>icon=${icon}</txt-record>
 <txt-record>description=${description}</txt-record>
-<txt-record>expiration=${expiration}</txt-record>
-<txt-record>synchronous=${synchronous}</txt-record>]]
+<txt-record>expiration=${expiration}</txt-record>]]
 		tmpl = [[
 <?xml version="1.0" standalone='no'?><!--*-nxml-*-->
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
@@ -451,11 +438,8 @@ ${app_types}
 ]]
 
 		-- FILL IN ${TYPE} BY LOOKING UP PORT IN /ETC/SERVICES, DEFAULT TO 'commotion'
-		if (values.transport == '') then                                      
-			values.transport = 'tcp'
-		end
 		if (values.port ~= '') then
-			local command = "grep " .. values.port .. "/" .. values.transport .. " /etc/services |awk '{ printf(\"%s\", $1) }'"
+			local command = "grep " .. values.port .. "/tcp /etc/services |awk '{ printf(\"%s\", $1) }'"
 			service_type = luci.sys.exec(command)
 			if (service_type == '') then
 				service_type = 'commotion'
@@ -491,12 +475,9 @@ ${app_types}
 		  ipaddr = values.ipaddr,
 		  port = values.port,
 		  icon = values.icon,
-		  nick = values.nick,
 		  description = values.description,
 		  ttl = values.ttl,
-		  proto = values.transport or 'tcp',
 		  app_types = app_types,
-		  synchronous = values.synchronous,
 		  expiration = expiration
 		}
 		
