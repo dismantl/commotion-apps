@@ -3,7 +3,7 @@
 	<div class="name">
 	<h4><a href="<% if not this_app.ipaddr:match("^[a-z]+://") then %>http://<% end %><%=this_app.ipaddr%><% if this_app.port and (not this_app.ipaddr:match("[:/]") or (this_app.ipaddr:match("^[a-z]+://") and not this_app.ipaddr:match("^[a-z]+://[^/:]*[/:]"))) then %>:<%=this_app.port%><% end %>"><%=this_app.name%></a></h4>
 	<div class="app-info">
-	  <img class="info-button" src="<%=media%>/question.png" />
+	  <img class="info-button" src="<%=media%>/help.png" />
 	  <div class="app-tooltip">
 	    <div class="hashtag"><h3><%=this_app.hashtag%></h3></div>
 	    <% if this_app.fingerprint then %>
