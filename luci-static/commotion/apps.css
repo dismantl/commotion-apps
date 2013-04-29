@@ -1,5 +1,4 @@
 .apps {
-display:none;
 border:2px dashed #ff6699;
 margin-top:8px;
 }
@@ -77,3 +76,5 @@ button:hover, a:hover {
 color:#66CCFF !important;
 text-decoration:underline;
 }
+
+fieldset legend { padding-top:0; }

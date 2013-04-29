@@ -3,9 +3,9 @@
 <%- for type_name, apps_of_type in pairs(categories) do
   catType = type_name
 -%>
-  <div class="type" id="<%=catType%>" style="display:none">
+  <div class="type" id="<%=catType%>">
   <% include("themes/" .. theme .. "/apps_categories") %>  
-  <div class="apps" id="<%=catType%>Apps" style="display:none">
+  <div class="apps" id="<%=catType%>Apps">
     <%-
 	this_app = {}
 	for i, app in pairs(apps_of_type) do
