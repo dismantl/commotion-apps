@@ -6,6 +6,8 @@ require "luci.sys"
 require "luci.fs"
 require "commotion_helpers"
 function index()
+  local uci = luci.model.uci.cursor()
+  if uci:get("applications","settings","disabled") == "0" then
     entry({"commotion", "index", "apps"}, call("load_apps"), "Local Applications", 20).dependent=true
     entry({"apps"}, call("load_apps"), "Local Applications", 20).dependent=true
     entry({"admin","commotion","apps"}, call("admin_load_apps"), "Local Applications", 50).dependent=true
@@ -17,6 +19,7 @@ function index()
     entry({"admin", "commotion", "apps", "settings"}, call("admin_edit_settings")).dependent=true
     entry({"admin", "commotion", "apps", "settings_submit"}, call("action_settings")).dependent=true
     entry({"admin", "commotion", "apps", "judge"}, call("judge_app")).dependent=true
+  end
 end
 
 function judge_app()
